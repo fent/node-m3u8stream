@@ -1,0 +1,12 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:8
+#EXT-X-MEDIA-SEQUENCE:2683
+
+#EXTINF:7.975,
+https://priv.example.com/fileSequence2683.ts
+#EXTINF:7.941,
+https://priv.example.com/fileSequence2684.ts
+#EXTINF:7.941,
+https://priv.example.com/fileSequence2685.ts
+#EXT-X-ENDLIST

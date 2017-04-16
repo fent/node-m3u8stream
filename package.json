@@ -1,0 +1,35 @@
+{
+  "name": "m3u8stream",
+  "description": "Concatenates segments from a m3u8 playlist into a consumable stream.",
+  "keywords": [
+    "m3u8",
+    "live",
+    "stream"
+  ],
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/fent/node-m3u8stream.git"
+  },
+  "author": "fent (https://github.com/fent)",
+  "main": "./lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "istanbul cover node_modules/.bin/_mocha -- test/*-test.js"
+  },
+  "dependencies": {
+    "miniget": "^1.0.0"
+  },
+  "devDependencies": {
+    "istanbul": "^0.4.5",
+    "mocha": "^3.2.0",
+    "nock": "^9.0.9",
+    "sinon": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=0.12"
+  },
+  "license": "MIT"
+}

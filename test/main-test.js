@@ -18,10 +18,27 @@ describe('m3u8stream', function() {
   after(function() { nock.enableNetConnect(); });
 
   describe('Simple media playlist', function() {
-    it('Concatenates segments into stream without reloading', function(done) {
+    it('Concatenates segments into stream', function(done) {
       var scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
+        .get('/first.ts').reply(200, 'one')
+        .get('/second.ts').reply(200, 'two')
+        .get('/third.ts').reply(200, 'three');
+      var stream = m3u8stream('http://media.example.com/playlist.m3u8');
+      concat(stream, function(err, body) {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwothree');
+        done();
+      });
+    });
+
+    it('Concatenates relative segments into stream', function(done) {
+      var scope = nock('http://media.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200,
+          path.resolve(__dirname, 'playlists/simple_relative.m3u8'))
         .get('/first.ts').reply(200, 'one')
         .get('/second.ts').reply(200, 'two')
         .get('/third.ts').reply(200, 'three');

@@ -26,7 +26,7 @@ Creates a readable stream of binary media data. `options` can have the following
 
 * `chunkReadahead` - How many chunks to preload ahead. Default is `3`.
 * `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
-* `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers` or `highWaterMark`.
+* `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
 * `refreshInterval` - How often to refresh the playlist. If end of segment list is approached before the next interval, then it will refresh sooner.
 
 Stream has an `.end()` method, that if called, stops requesting segments, and refreshing the playlist.
@@ -35,7 +35,7 @@ Stream has an `.end()` method, that if called, stops requesting segments, and re
 
 Currently, it does not support [encrypted media segments](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20#section-4.3.2.4). This is because the sites where this was tested on and intended for, YouTube and Twitch, don't use it.
 
-This does not parse master playlists, only media playlists. If you want to parse a master playlist to get links to media playlists, you can try the [m3u8 module](https://github.com/tedconf/node-m3u8), which m3u8stream uses.
+This does not parse master playlists, only media playlists. If you want to parse a master playlist to get links to media playlists, you can try the [m3u8 module](https://github.com/tedconf/node-m3u8).
 
 
 # Install

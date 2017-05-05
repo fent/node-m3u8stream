@@ -1,5 +1,7 @@
 # node-m3u8stream
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/fent/node-m3u8stream.svg)](https://greenkeeper.io/)
+
 Concatenates segments from a [m3u8 playlist](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20) into a consumable stream.
 
 [![Build Status](https://secure.travis-ci.org/fent/node-m3u8stream.svg)](http://travis-ci.org/fent/node-m3u8stream)

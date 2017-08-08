@@ -28,6 +28,7 @@ Creates a readable stream of binary media data. `options` can have the following
 * `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
 * `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
 * `refreshInterval` - How often to refresh the playlist. If end of segment list is approached before the next interval, then it will refresh sooner.
+* `on_progress` - Callback for progress reporting of playlist download.  Returns an object containing { current: , total: }.
 * `on_complete` - Callback for when download of playlist is complete.
 
 Stream has an `.end()` method, that if called, stops requesting segments, and refreshing the playlist.

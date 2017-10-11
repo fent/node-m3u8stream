@@ -4,23 +4,23 @@ const path       = require('path');
 const assert     = require('assert');
 
 
-describe('m3u8-parser', function() {
-  describe('Parses tags from a simple playlist', function() {
-    it('Emits all tags and segments', function(done) {
+describe('m3u8-parser', () => {
+  describe('Parses tags from a simple playlist', () => {
+    it('Emits all tags and segments', (done) => {
       var filepath = path.resolve(__dirname, 'playlists/simple.m3u8');
       var tags = [];
       var items = [];
       var parser = new m3u8parser();
-      parser.on('tag', function(tag, value) {
-        tags.push({ tag: tag, value: value });
+      parser.on('tag', (tag, value) => {
+        tags.push({ tag, value });
       });
-      parser.on('item', function(item) {
+      parser.on('item', (item) => {
         items.push(item);
       });
       parser.on('error', done);
       var rs = fs.createReadStream(filepath, { highWaterMark: 16 });
       rs.pipe(parser);
-      rs.on('end', function() {
+      rs.on('end', () => {
         assert.deepEqual(tags, [
           { tag: 'EXTM3U', value: null },
           { tag: 'EXT-X-TARGETDURATION', value: '10' },
@@ -39,22 +39,22 @@ describe('m3u8-parser', function() {
     });
   });
 
-  describe('Parses tags from a live playlist', function() {
-    it('Emits all tags and segments', function(done) {
+  describe('Parses tags from a live playlist', () => {
+    it('Emits all tags and segments', (done) => {
       var filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');
       var tags = [];
       var items = [];
       var parser = new m3u8parser();
-      parser.on('tag', function(tag, value) {
-        tags.push({ tag: tag, value: value });
+      parser.on('tag', (tag, value) => {
+        tags.push({ tag, value });
       });
-      parser.on('item', function(item) {
+      parser.on('item', (item) => {
         items.push(item);
       });
       parser.on('error', done);
       var rs = fs.createReadStream(filepath);
       rs.pipe(parser);
-      rs.on('end', function() {
+      rs.on('end', () => {
         assert.deepEqual(tags, [
           { tag: 'EXTM3U', value: null },
           { tag: 'EXT-X-VERSION', value: '3' },

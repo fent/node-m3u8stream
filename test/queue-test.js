@@ -3,23 +3,23 @@ const assert = require('assert');
 const sinon  = require('sinon');
 
 
-describe('Create a queue', function() {
-  describe('With 3 concurrency', function() {
+describe('Create a queue', () => {
+  describe('With 3 concurrency', () => {
     var clock;
-    before(function() { clock = sinon.useFakeTimers(); });
-    after(function() { clock.restore(); });
+    before(() => { clock = sinon.useFakeTimers(); });
+    after(() => { clock.restore(); });
 
-    it('Defaults to a set concurrency', function(done) {
+    it('Defaults to a set concurrency', (done) => {
       var maxms;
       var lastTask;
-      var q = new Queue(function(task, callback) {
+      var q = new Queue((task, callback) => {
         if (lastTask) {
           // Make sure tasks are called in order.
           // Even if they don't finish in order.
           assert.equal(lastTask, task - 1);
         }
         var ms = Math.floor(Math.random() * 1000);
-        setTimeout(function() { callback(null); }, ms);
+        setTimeout(() => { callback(null); }, ms);
         if (!maxms || ms > maxms) {
           maxms = ms;
         }
@@ -30,22 +30,22 @@ describe('Create a queue', function() {
         if (++called === total) {
           done();
         }
-        process.nextTick(function() { clock.tick(maxms); });
+        process.nextTick(() => { clock.tick(maxms); });
       }
 
       for (var i = 0; i < total; i++) {
         q.push(i, callback);
         assert.ok(q.active <= 3);
       }
-      process.nextTick(function() { clock.tick(maxms); });
+      process.nextTick(() => { clock.tick(maxms); });
     });
   });
 
-  describe('With 1 concurrency', function() {
-    it('Runs tasks sequentially one at a time', function(done) {
-      var q = new Queue(function(task, callback) {
+  describe('With 1 concurrency', () => {
+    it('Runs tasks sequentially one at a time', (done) => {
+      var q = new Queue((task, callback) => {
         assert.equal(q.active, 1);
-        process.nextTick(function() { callback(null); });
+        process.nextTick(() => { callback(null); });
       }, { concurrency: 1 });
 
       var total = 5, called = 0;
@@ -57,18 +57,18 @@ describe('Create a queue', function() {
     });
   });
 
-  describe('With `unique` option used', function() {
-    describe('Add same task while previous is running', function() {
-      it('Does not add the same tasks', function(done) {
+  describe('With `unique` option used', () => {
+    describe('Add same task while previous is running', () => {
+      it('Does not add the same tasks', (done) => {
         var total = 2, called = 0;
-        var q = new Queue(function(task, callback) {
-          process.nextTick(function() {
+        var q = new Queue((task, callback) => {
+          process.nextTick(() => {
             callback(null);
             if (++called === total) { done(); }
           });
         }, {
           concurrency: 10,
-          unique: function(task) { return task.id; },
+          unique: (task) => task.id,
         });
         q.push({ id: 4 });
         assert.equal(q.active, 1);
@@ -79,16 +79,16 @@ describe('Create a queue', function() {
       });
     });
 
-    describe('Add same task after previous finishes', function() {
-      it('Able to add same task again', function(done) {
-        var q = new Queue(function(task, callback) {
-          process.nextTick(function() { callback(null); });
+    describe('Add same task after previous finishes', () => {
+      it('Able to add same task again', (done) => {
+        var q = new Queue((task, callback) => {
+          process.nextTick(() => { callback(null); });
         }, {
           concurrency: 10,
-          unique: function(task) { return task.id; },
+          unique: (task) => task.id,
         });
-        q.push({ id: 4 }, function() {
-          process.nextTick(function() {
+        q.push({ id: 4 }, () => {
+          process.nextTick(() => {
             assert.equal(q.active, 0);
             q.push({ id: 4 }, done);
             assert.equal(q.active, 1);
@@ -99,11 +99,11 @@ describe('Create a queue', function() {
     });
   });
 
-  describe('Call worker callback twice', function() {
-    it('Calls task callback once', function(done) {
-      var q = new Queue(function(task, callback) {
+  describe('Call worker callback twice', () => {
+    it('Calls task callback once', (done) => {
+      var q = new Queue((task, callback) => {
         // Intentionally call callback twice.
-        process.nextTick(function() {
+        process.nextTick(() => {
           callback(null);
           callback(null);
         });
@@ -112,12 +112,12 @@ describe('Create a queue', function() {
     });
   });
 
-  describe('Kill it halfway', function() {
-    it('Does not run additional tasks', function(done) {
+  describe('Kill it halfway', () => {
+    it('Does not run additional tasks', (done) => {
       var results = [];
-      var q = new Queue(function(task, callback) {
+      var q = new Queue((task, callback) => {
         results.push(task);
-        process.nextTick(function() {
+        process.nextTick(() => {
           callback(null);
         });
       }, { concurrency: 2 });
@@ -130,7 +130,7 @@ describe('Create a queue', function() {
       assert.equal(q.tasks.length, 3);
       q.die();
       assert.equal(q.tasks.length, 0);
-      process.nextTick(function() {
+      process.nextTick(() => {
         assert.equal(q.active, 0);
         assert.deepEqual(results, ['a', 'b']);
         done();

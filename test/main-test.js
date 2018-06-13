@@ -6,7 +6,7 @@ const sinon      = require('sinon');
 
 
 function concat(stream, callback) {
-  var body = '';
+  let body = '';
   stream.setEncoding('utf8');
   stream.on('data', (chunk) => { body += chunk; });
   stream.on('error', callback);
@@ -19,13 +19,13 @@ describe('m3u8stream', () => {
 
   describe('Simple media playlist', () => {
     it('Concatenates segments into stream', (done) => {
-      var scope = nock('http://media.example.com')
+      let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
         .get('/first.ts').reply(200, 'one')
         .get('/second.ts').reply(200, 'two')
         .get('/third.ts').reply(200, 'three');
-      var stream = m3u8stream('http://media.example.com/playlist.m3u8');
+      let stream = m3u8stream('http://media.example.com/playlist.m3u8');
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
@@ -35,14 +35,14 @@ describe('m3u8stream', () => {
     });
 
     it('Concatenates relative segments into stream', (done) => {
-      var scope = nock('http://media.example.com')
+      let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200,
           path.resolve(__dirname, 'playlists/simple_relative.m3u8'))
         .get('/first.ts').reply(200, 'one')
         .get('/second.ts').reply(200, 'two')
         .get('/third.ts').reply(200, 'three');
-      var stream = m3u8stream('http://media.example.com/playlist.m3u8');
+      let stream = m3u8stream('http://media.example.com/playlist.m3u8');
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
@@ -53,12 +53,12 @@ describe('m3u8stream', () => {
   });
 
   describe('Live media playlist', () => {
-    var clock;
+    let clock;
     before(() => { clock = sinon.useFakeTimers(); });
     after(() => { clock.restore(); });
 
     it('Refreshes after some time', (done) => {
-      var scope = nock('https://priv.example.com')
+      let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-1.1.m3u8'))
@@ -78,7 +78,7 @@ describe('m3u8stream', () => {
         clock.tick(1000 * 10);
       }
 
-      var stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
         chunkReadahead: 1,
         refreshInterval: 1000 * 10,
       });
@@ -91,7 +91,7 @@ describe('m3u8stream', () => {
     });
 
     it('Refresh after nearing end of segment list', (done) => {
-      var scope = nock('https://priv.example.com')
+      let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-2.1.m3u8'))
@@ -125,7 +125,7 @@ describe('m3u8stream', () => {
           .get('/fileSequence2700.ts').reply(200, 'strawberry');
       }
 
-      var stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
@@ -156,10 +156,10 @@ describe('m3u8stream', () => {
     });
 
     it('Stops on error getting playlist', (done) => {
-      var scope = nock('http://mysite.com')
+      let scope = nock('http://mysite.com')
         .get('/pl.m3u8')
         .replyWithError('Nooo');
-      var stream = m3u8stream('http://mysite.com/pl.m3u8');
+      let stream = m3u8stream('http://mysite.com/pl.m3u8');
       stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'Nooo');
@@ -171,7 +171,7 @@ describe('m3u8stream', () => {
     });
 
     it('Stops on error refreshing playlist', (done) => {
-      var scope = nock('https://priv.example.com')
+      let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-1.1.m3u8'))
@@ -186,7 +186,7 @@ describe('m3u8stream', () => {
         .get('/fileSequence2682.ts').reply(200, 'two')
         .get('/fileSequence2683.ts').reply(200, 'three');
 
-      var stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
       stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'uh oh');
@@ -198,13 +198,13 @@ describe('m3u8stream', () => {
     });
 
     it('Stops on error getting a segment', (done) => {
-      var scope = nock('https://priv.example.com')
+      let scope = nock('https://priv.example.com')
         .get('/playme.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-1.1.m3u8'))
         .get('/fileSequence2681.ts').reply(200, 'hello')
         .get('/fileSequence2682.ts').replyWithError('bad segment');
-      var stream = m3u8stream('https://priv.example.com/playme.m3u8', {
+      let stream = m3u8stream('https://priv.example.com/playme.m3u8', {
         chunkReadahead: 1,
       });
       stream.on('error', (err) => {
@@ -220,7 +220,7 @@ describe('m3u8stream', () => {
     describe('Destroy stream', () => {
       describe('Right away', () => {
         it('Ends stream right away with no data', (done) => {
-          var stream = m3u8stream('https://whatever.com/playlist.m3u8');
+          let stream = m3u8stream('https://whatever.com/playlist.m3u8');
           concat(stream, (err, body) => {
             assert.ifError(err);
             assert.equal(body, '');
@@ -232,7 +232,7 @@ describe('m3u8stream', () => {
 
       describe('In the middle of the segments list', () => {
         it('Stops stream from emitting more data and ends it', (done) => {
-          var scope = nock('https://priv.example.com')
+          let scope = nock('https://priv.example.com')
             .get('/playlist.m3u8')
             .replyWithFile(200, path.resolve(__dirname,
               'playlists/live-2.1.m3u8'))
@@ -244,7 +244,7 @@ describe('m3u8stream', () => {
               stream.end();
               return 'whatever';
             });
-          var stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+          let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
             chunkReadahead: 1,
           });
           concat(stream, (err, body) => {

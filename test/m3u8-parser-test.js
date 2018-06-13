@@ -7,10 +7,10 @@ const assert     = require('assert');
 describe('m3u8-parser', () => {
   describe('Parses tags from a simple playlist', () => {
     it('Emits all tags and segments', (done) => {
-      var filepath = path.resolve(__dirname, 'playlists/simple.m3u8');
-      var tags = [];
-      var items = [];
-      var parser = new m3u8parser();
+      let filepath = path.resolve(__dirname, 'playlists/simple.m3u8');
+      let tags = [];
+      let items = [];
+      let parser = new m3u8parser();
       parser.on('tag', (tag, value) => {
         tags.push({ tag, value });
       });
@@ -18,7 +18,7 @@ describe('m3u8-parser', () => {
         items.push(item);
       });
       parser.on('error', done);
-      var rs = fs.createReadStream(filepath, { highWaterMark: 16 });
+      let rs = fs.createReadStream(filepath, { highWaterMark: 16 });
       rs.pipe(parser);
       rs.on('end', () => {
         assert.deepEqual(tags, [
@@ -41,10 +41,10 @@ describe('m3u8-parser', () => {
 
   describe('Parses tags from a live playlist', () => {
     it('Emits all tags and segments', (done) => {
-      var filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');
-      var tags = [];
-      var items = [];
-      var parser = new m3u8parser();
+      let filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');
+      let tags = [];
+      let items = [];
+      let parser = new m3u8parser();
       parser.on('tag', (tag, value) => {
         tags.push({ tag, value });
       });
@@ -52,7 +52,7 @@ describe('m3u8-parser', () => {
         items.push(item);
       });
       parser.on('error', done);
-      var rs = fs.createReadStream(filepath);
+      let rs = fs.createReadStream(filepath);
       rs.pipe(parser);
       rs.on('end', () => {
         assert.deepEqual(tags, [

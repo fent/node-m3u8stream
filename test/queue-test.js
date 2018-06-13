@@ -5,27 +5,27 @@ const sinon  = require('sinon');
 
 describe('Create a queue', () => {
   describe('With 3 concurrency', () => {
-    var clock;
+    let clock;
     before(() => { clock = sinon.useFakeTimers(); });
     after(() => { clock.restore(); });
 
     it('Defaults to a set concurrency', (done) => {
-      var maxms;
-      var lastTask;
-      var q = new Queue((task, callback) => {
+      let maxms;
+      let lastTask;
+      let q = new Queue((task, callback) => {
         if (lastTask) {
           // Make sure tasks are called in order.
           // Even if they don't finish in order.
           assert.equal(lastTask, task - 1);
         }
-        var ms = Math.floor(Math.random() * 1000);
+        let ms = Math.floor(Math.random() * 1000);
         setTimeout(() => { callback(null); }, ms);
         if (!maxms || ms > maxms) {
           maxms = ms;
         }
       }, { concurrency: 3 });
 
-      var total = 10, called = 0;
+      let total = 10, called = 0;
       function callback() {
         if (++called === total) {
           done();
@@ -33,7 +33,7 @@ describe('Create a queue', () => {
         process.nextTick(() => { clock.tick(maxms); });
       }
 
-      for (var i = 0; i < total; i++) {
+      for (let i = 0; i < total; i++) {
         q.push(i, callback);
         assert.ok(q.active <= 3);
       }
@@ -43,14 +43,14 @@ describe('Create a queue', () => {
 
   describe('With 1 concurrency', () => {
     it('Runs tasks sequentially one at a time', (done) => {
-      var q = new Queue((task, callback) => {
+      let q = new Queue((task, callback) => {
         assert.equal(q.active, 1);
         process.nextTick(() => { callback(null); });
       }, { concurrency: 1 });
 
-      var total = 5, called = 0;
+      let total = 5, called = 0;
       function callback() { if (++called === total) { done(); } }
-      for (var i = 0; i < total; i++) {
+      for (let i = 0; i < total; i++) {
         q.push(i, callback);
         assert.equal(q.active, 1);
       }
@@ -60,8 +60,8 @@ describe('Create a queue', () => {
   describe('With `unique` option used', () => {
     describe('Add same task while previous is running', () => {
       it('Does not add the same tasks', (done) => {
-        var total = 2, called = 0;
-        var q = new Queue((task, callback) => {
+        let total = 2, called = 0;
+        let q = new Queue((task, callback) => {
           process.nextTick(() => {
             callback(null);
             if (++called === total) { done(); }
@@ -81,7 +81,7 @@ describe('Create a queue', () => {
 
     describe('Add same task after previous finishes', () => {
       it('Able to add same task again', (done) => {
-        var q = new Queue((task, callback) => {
+        let q = new Queue((task, callback) => {
           process.nextTick(() => { callback(null); });
         }, {
           concurrency: 10,
@@ -101,7 +101,7 @@ describe('Create a queue', () => {
 
   describe('Call worker callback twice', () => {
     it('Calls task callback once', (done) => {
-      var q = new Queue((task, callback) => {
+      let q = new Queue((task, callback) => {
         // Intentionally call callback twice.
         process.nextTick(() => {
           callback(null);
@@ -114,8 +114,8 @@ describe('Create a queue', () => {
 
   describe('Kill it halfway', () => {
     it('Does not run additional tasks', (done) => {
-      var results = [];
-      var q = new Queue((task, callback) => {
+      let results = [];
+      let q = new Queue((task, callback) => {
         results.push(task);
         process.nextTick(() => {
           callback(null);

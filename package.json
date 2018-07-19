@@ -6,7 +6,7 @@
     "live",
     "stream"
   ],
-  "version": "0.2.2",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/fent/node-m3u8stream.git"

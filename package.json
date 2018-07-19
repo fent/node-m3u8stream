@@ -24,9 +24,9 @@
   },
   "devDependencies": {
     "istanbul": "^0.4.5",
+    "lolex": "^2.7.1",
     "mocha": "^5.0.0",
-    "nock": "^9.3.2",
-    "sinon": "^6.0.0"
+    "nock": "^9.3.2"
   },
   "engines": {
     "node": ">=4"

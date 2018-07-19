@@ -1,13 +1,13 @@
 const Queue  = require('../lib/queue');
 const assert = require('assert');
-const sinon  = require('sinon');
+const lolex  = require('lolex');
 
 
 describe('Create a queue', () => {
   describe('With 3 concurrency', () => {
     let clock;
-    before(() => { clock = sinon.useFakeTimers(); });
-    after(() => { clock.restore(); });
+    before(() => { clock = lolex.install(); });
+    after(() => { clock.uninstall(); });
 
     it('Defaults to a set concurrency', (done) => {
       let maxms;
@@ -54,48 +54,6 @@ describe('Create a queue', () => {
         q.push(i, callback);
         assert.equal(q.active, 1);
       }
-    });
-  });
-
-  describe('With `unique` option used', () => {
-    describe('Add same task while previous is running', () => {
-      it('Does not add the same tasks', (done) => {
-        let total = 2, called = 0;
-        let q = new Queue((task, callback) => {
-          process.nextTick(() => {
-            callback(null);
-            if (++called === total) { done(); }
-          });
-        }, {
-          concurrency: 10,
-          unique: (task) => task.id,
-        });
-        q.push({ id: 4 });
-        assert.equal(q.active, 1);
-        q.push({ id: 4 });
-        assert.equal(q.active, 1);
-        q.push({ id: 2 });
-        assert.equal(q.active, 2);
-      });
-    });
-
-    describe('Add same task after previous finishes', () => {
-      it('Able to add same task again', (done) => {
-        let q = new Queue((task, callback) => {
-          process.nextTick(() => { callback(null); });
-        }, {
-          concurrency: 10,
-          unique: (task) => task.id,
-        });
-        q.push({ id: 4 }, () => {
-          process.nextTick(() => {
-            assert.equal(q.active, 0);
-            q.push({ id: 4 }, done);
-            assert.equal(q.active, 1);
-          });
-        });
-        assert.equal(q.active, 1);
-      });
     });
   });
 

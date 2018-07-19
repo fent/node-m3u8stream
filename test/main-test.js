@@ -2,7 +2,6 @@ const m3u8stream = require('..');
 const path       = require('path');
 const assert     = require('assert');
 const nock       = require('nock');
-const sinon      = require('sinon');
 
 
 function concat(stream, callback) {
@@ -53,43 +52,6 @@ describe('m3u8stream', () => {
   });
 
   describe('Live media playlist', () => {
-    let clock;
-    before(() => { clock = sinon.useFakeTimers(); });
-    after(() => { clock.restore(); });
-
-    it('Refreshes after some time', (done) => {
-      let scope = nock('https://priv.example.com')
-        .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
-        .get('/fileSequence2681.ts').reply(200, 'one')
-        .get('/fileSequence2682.ts').reply(() => {
-          process.nextTick(passSomeTime);
-          return 'two';
-        });
-
-      function passSomeTime() {
-        scope.get('/playlist.m3u8')
-          .replyWithFile(200, path.resolve(__dirname,
-            'playlists/live-1.2.m3u8'))
-          .get('/fileSequence2683.ts').reply(200, 'three')
-          .get('/fileSequence2684.ts').reply(200, 'four')
-          .get('/fileSequence2685.ts').reply(200, 'five');
-        clock.tick(1000 * 10);
-      }
-
-      let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
-        chunkReadahead: 1,
-        refreshInterval: 1000 * 10,
-      });
-      concat(stream, (err, body) => {
-        assert.ifError(err);
-        scope.done();
-        assert.equal(body, 'onetwothreefourfive');
-        done();
-      });
-    });
-
     it('Refresh after nearing end of segment list', (done) => {
       let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
@@ -214,6 +176,106 @@ describe('m3u8stream', () => {
       });
       stream.on('end', () => {
         throw new Error('Should not emit end');
+      });
+    });
+
+    describe('With dated segments', () => {
+      describe('With `begin` set to now', () => {
+        it('Starts stream on segment that matches `begin`', (done) => {
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(200, path.resolve(__dirname,
+              'playlists/youtube-live-1.1.m3u8'))
+            .get('/fileSequence0005.ts').reply(() => {
+              process.nextTick(passSomeTime);
+              return '05';
+            })
+            .get('/fileSequence0006.ts').reply(200, '06')
+            .get('/fileSequence0007.ts').reply(200, '07')
+            .get('/fileSequence0008.ts').reply(200, '08');
+
+          function passSomeTime() {
+            scope.get('/playlist.m3u8')
+              .replyWithFile(200, path.resolve(__dirname,
+                'playlists/youtube-live-1.2.m3u8'))
+              .get('/fileSequence0009.ts').reply(200, '09')
+              .get('/fileSequence0010.ts').reply(200, '10')
+              .get('/fileSequence0011.ts').reply(200, '11')
+              .get('/fileSequence0012.ts').reply(200, '12');
+          }
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: Date.now()
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, [
+              '05',
+              '06',
+              '07',
+              '08',
+              '09',
+              '10',
+              '11',
+              '12'
+            ].join(''));
+            done();
+          });
+        });
+      });
+
+      describe('With `begin` set using relative format', () => {
+        it('Starts stream on segment that matches `begin`', (done) => {
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(200, path.resolve(__dirname,
+              'playlists/youtube-live-1.1.m3u8'))
+            .get('/fileSequence0003.ts').reply(() => {
+              process.nextTick(passSomeTime);
+              return '03';
+            })
+            .get('/fileSequence0004.ts').reply(200, '04')
+            .get('/fileSequence0005.ts').reply(200, '05')
+            .get('/fileSequence0006.ts').reply(200, '06')
+            .get('/fileSequence0007.ts').reply(200, '07')
+            .get('/fileSequence0008.ts').reply(200, '08');
+
+          function passSomeTime() {
+            scope.get('/playlist.m3u8')
+              .replyWithFile(200, path.resolve(__dirname,
+                'playlists/youtube-live-1.2.m3u8'))
+              .get('/fileSequence0009.ts').reply(200, '09')
+              .get('/fileSequence0010.ts').reply(200, '10')
+              .get('/fileSequence0011.ts').reply(200, '11')
+              .get('/fileSequence0012.ts').reply(200, '12');
+          }
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', { begin: '10s' });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, [
+              '03',
+              '04',
+              '05',
+              '06',
+              '07',
+              '08',
+              '09',
+              '10',
+              '11',
+              '12'
+            ].join(''));
+            done();
+          });
+        });
+      });
+
+      describe('With `begin` set in the past', () => {
+        it('Starts stream on segment that matches `begin`', (done) => {
+          done();
+        });
       });
     });
 

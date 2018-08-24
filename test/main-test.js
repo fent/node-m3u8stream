@@ -13,6 +13,9 @@ function concat(stream, callback) {
 }
 
 describe('m3u8stream', () => {
+  let setTimeout = global.setTimeout;
+  before(() => { global.setTimeout = (fn) => { setTimeout(fn); }; });
+  after(() => { global.setTimeout = setTimeout; });
   before(() => { nock.disableNetConnect(); });
   after(() => { nock.enableNetConnect(); });
 
@@ -321,6 +324,59 @@ describe('m3u8stream', () => {
             done();
           });
         });
+      });
+    });
+  });
+
+  describe('DASH MPD playlist', () => {
+    it('Concatenates egments into stream', (done) => {
+      let scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/multi-representation.mpd'))
+        .get('/134/0001.ts').reply(200, '01')
+        .get('/134/0002.ts').reply(200, '02')
+        .get('/134/0003.ts').reply(200, '03')
+        .get('/134/0004.ts').reply(200, '04')
+        .get('/134/0005.ts').reply(200, '05')
+        .get('/134/0006.ts').reply(200, '06')
+        .get('/134/0007.ts').reply(200, '07')
+        .get('/134/0008.ts').reply(200, '08')
+        .get('/134/0009.ts').reply(200, '09')
+        .get('/134/0010.ts').reply(200, '10');
+      let stream = m3u8stream('https://videohost.com/playlist.mpd', {
+        parser: 'dash-mpd',
+        id: '134',
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, [
+          '01',
+          '02',
+          '03',
+          '04',
+          '05',
+          '06',
+          '07',
+          '08',
+          '09',
+          '10'
+        ].join(''));
+        done();
+      });
+    });
+  });
+
+  describe('With a bad parser', () => {
+    it('Throws bad parser error', () => {
+      assert.throws(() => {
+        m3u8stream('http://media.example.com/playlist.m3u8', {
+          parser: 'baaaaad'
+        });
+      }, {
+        name: 'TypeError',
+        message: /parser '\w+' not supported/,
       });
     });
   });

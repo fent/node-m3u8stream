@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns="urn:mpeg:DASH:schema:MPD:2011"
+xsi:schemaLocation="urn:mpeg:DASH:schema:MPD:2011 DASH-MPD.xsd"
+type="static"
+availabilityStartTime="2018-08-20T12:24:22">
+  <Period start="PT1105630.000S">
+    <SegmentList presentationTimeOffset="1105630058"
+    startNumber="1" timescale="1000">
+      <SegmentTimeline>
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+        <S d="2000" />
+      </SegmentTimeline>
+    </SegmentList>
+    <AdaptationSet mimeType="audio/mp4">
+      <Representation id="139">
+        <BaseURL>https://videohost.com/139/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+          <SegmentURL media="0002.ts" />
+          <SegmentURL media="0003.ts" />
+          <SegmentURL media="0004.ts" />
+          <SegmentURL media="0005.ts" />
+          <SegmentURL media="0006.ts" />
+          <SegmentURL media="0007.ts" />
+          <SegmentURL media="0008.ts" />
+          <SegmentURL media="0009.ts" />
+          <SegmentURL media="0010.ts" />
+        </SegmentList>
+      </Representation>
+      <Representation id="140" bandwidth="144000">
+        <BaseURL>https://videohost.com/140/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+          <SegmentURL media="0002.ts" />
+          <SegmentURL media="0003.ts" />
+          <SegmentURL media="0004.ts" />
+          <SegmentURL media="0005.ts" />
+          <SegmentURL media="0006.ts" />
+          <SegmentURL media="0007.ts" />
+          <SegmentURL media="0008.ts" />
+          <SegmentURL media="0009.ts" />
+          <SegmentURL media="0010.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="133" width="426" height="240" bandwidth="258000">
+        <BaseURL>https://videohost.com/133/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+          <SegmentURL media="0002.ts" />
+          <SegmentURL media="0003.ts" />
+          <SegmentURL media="0004.ts" />
+          <SegmentURL media="0005.ts" />
+          <SegmentURL media="0006.ts" />
+          <SegmentURL media="0007.ts" />
+          <SegmentURL media="0008.ts" />
+          <SegmentURL media="0009.ts" />
+          <SegmentURL media="0010.ts" />
+        </SegmentList>
+      </Representation>
+      <Representation id="134" width="640" height="360" bandwidth="646000">
+        <BaseURL>https://videohost.com/134/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+          <SegmentURL media="0002.ts" />
+          <SegmentURL media="0003.ts" />
+          <SegmentURL media="0004.ts" />
+          <SegmentURL media="0005.ts" />
+          <SegmentURL media="0006.ts" />
+          <SegmentURL media="0007.ts" />
+          <SegmentURL media="0008.ts" />
+          <SegmentURL media="0009.ts" />
+          <SegmentURL media="0010.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

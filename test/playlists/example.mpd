@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:full:2011" minBufferTime="PT1.5S">
+    <!-- Ad -->
+    <Period duration="PT30S">
+        <BaseURL>ad/</BaseURL>
+        <!-- Everything in one Adaptation Set -->
+        <AdaptationSet mimeType="video/mp2t">
+            <!-- 720p Representation at 3.2 Mbps -->
+            <Representation id="720p" bandwidth="3200000" width="1280" height="720">
+                <!-- Just use one segment, since the ad is only 30 seconds long -->
+                <BaseURL>720p.ts</BaseURL>
+                <SegmentBase>
+                    <RepresentationIndex sourceURL="720p.sidx"/>
+                </SegmentBase>
+            </Representation>
+            <!-- 1080p Representation at 6.8 Mbps -->
+            <Representation id="1080p" bandwidth="6800000" width="1920" height="1080">
+                <BaseURL>1080p.ts</BaseURL>
+                <SegmentBase>
+                    <RepresentationIndex sourceURL="1080p.sidx"/>
+                </SegmentBase>
+            </Representation>
+        </AdaptationSet>
+    </Period>
+    <!-- Normal Content -->
+    <Period duration="PT5M">
+        <BaseURL>main/</BaseURL>
+        <!-- Just the video -->
+        <AdaptationSet mimeType="video/mp2t">
+            <BaseURL>video/</BaseURL>
+            <!-- 720p Representation at 3.2 Mbps -->
+            <Representation id="720p" bandwidth="3200000" width="1280" height="720">
+                <BaseURL>720p/</BaseURL>
+                <!-- First, we'll just list all of the segments -->
+                <!-- Timescale is "ticks per second", so each segment is 1 minute long -->
+                <SegmentList timescale="90000" duration="5400000">
+                    <RepresentationIndex sourceURL="representation-index.sidx"/>
+                    <SegmentURL media="segment-1.ts"/>
+                    <SegmentURL media="segment-2.ts"/>
+                    <SegmentURL media="segment-3.ts"/>
+                    <SegmentURL media="segment-4.ts"/>
+                    <SegmentURL media="segment-5.ts"/>
+                    <SegmentURL media="segment-6.ts"/>
+                    <SegmentURL media="segment-7.ts"/>
+                    <SegmentURL media="segment-8.ts"/>
+                    <SegmentURL media="segment-9.ts"/>
+                    <SegmentURL media="segment-10.ts"/>
+                </SegmentList>
+            </Representation>
+            <!-- 1080p Representation at 6.8 Mbps -->
+            <Representation id="1080p" bandwidth="6800000" width="1920" height="1080">
+                <BaseURL>1080/</BaseURL>
+                <!-- Since all of our segments have similar names, this time we'll use a SegmentTemplate -->
+                <SegmentTemplate media="segment-$Number$.ts" timescale="90000">
+                    <RepresentationIndex sourceURL="representation-index.sidx"/>
+                    <!-- Let's add a SegmentTimeline so the client can easily see how many segments there are
+                         -->
+                    <SegmentTimeline>
+                        <!-- This reads: Starting from time 0, there are 10 segments with a duration of
+                             (5400000 / @timescale) seconds -->
+                        <S t="0" r="10" d="5400000"/>
+                    </SegmentTimeline>
+                </SegmentTemplate>
+            </Representation>
+        </AdaptationSet>
+        <!-- Just the audio -->
+        <AdaptationSet mimeType="audio/mp2t">
+            <BaseURL>audio/</BaseURL>
+            <!-- We're just going to offer one audio representation, since audio bandwidth isn't very
+                 important. -->
+            <Representation id="audio" bandwidth="128000">
+                <SegmentTemplate media="segment-$Number$.ts" timescale="90000">
+                    <RepresentationIndex sourceURL="representation-index.sidx"/>
+                    <SegmentTimeline>
+                        <S t="0" r="10" d="5400000"/>
+                    </SegmentTimeline>
+                </SegmentTemplate>
+            </Representation>
+        </AdaptationSet>
+    </Period>
+</MPD>

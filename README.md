@@ -1,6 +1,9 @@
 # node-m3u8stream
 
-Concatenates segments from a [m3u8 playlist](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20) into a consumable stream.
+Concatenates segments from a [m3u8 playlist][1] or [DASH MPD file][2] into a consumable stream.
+
+[1]: https://tools.ietf.org/html/draft-pantos-http-live-streaming-20
+[2]: http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd
 
 [![Build Status](https://secure.travis-ci.org/fent/node-m3u8stream.svg)](http://travis-ci.org/fent/node-m3u8stream)
 [![Dependency Status](https://david-dm.org/fent/node-m3u8stream.svg)](https://david-dm.org/fent/node-m3u8stream)
@@ -29,6 +32,8 @@ Creates a readable stream of binary media data. `options` can have the following
 * `chunkReadahead` - How many chunks to preload ahead. Default is `3`.
 * `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
 * `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
+* `parser` - Either "m3u8" or "dash-mpd". Defaults to "m3u8".
+* `id` - If playlist contains multiple media options. Otherwise, the first representation will be picked.
 
 Stream has an `.end()` method, that if called, stops requesting segments, and refreshing the playlist.
 

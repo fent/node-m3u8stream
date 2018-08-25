@@ -1,6 +1,6 @@
 # node-m3u8stream
 
-Concatenates segments from a [m3u8 playlist][1] or [DASH MPD file][2] into a consumable stream.
+Reads segments from a [m3u8 playlist][1] or [DASH MPD file][2] into a consumable stream.
 
 [1]: https://tools.ietf.org/html/draft-pantos-http-live-streaming-20
 [2]: http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd

@@ -1,6 +1,6 @@
 {
   "name": "m3u8stream",
-  "description": "Concatenates segments from a m3u8 playlist into a consumable stream.",
+  "description": "Reads segments from a m3u8 or dash playlist into a consumable stream.",
   "keywords": [
     "m3u8",
     "hls",

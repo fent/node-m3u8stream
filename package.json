@@ -3,7 +3,11 @@
   "description": "Concatenates segments from a m3u8 playlist into a consumable stream.",
   "keywords": [
     "m3u8",
+    "hls",
+    "dash",
     "live",
+    "playlist",
+    "segments",
     "stream"
   ],
   "version": "0.3.0",

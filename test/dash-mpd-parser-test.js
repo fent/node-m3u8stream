@@ -84,6 +84,27 @@ describe('dash MPD parser', () => {
         done();
       });
     });
+
+    describe('With a target representation that isn\'t found', () => {
+      it('Emits error', (done) => {
+        let filepath = path.resolve(__dirname,
+          'playlists/multi-representation.mpd');
+        let items = [];
+        let endlist = false;
+        let id = 'willnotfindthis';
+        const parser = new DashMPDParser(id);
+        parser.on('item', (item) => { items.push(item); });
+        parser.on('endlist', () => { endlist = true; });
+        parser.on('error', (err) => {
+          assert.ok(endlist);
+          assert.equal(items.length, 0);
+          assert.equal(err.message, `Representation '${id}' not found`);
+          done();
+        });
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+      });
+    });
   });
 
   describe('A static playlist', () => {

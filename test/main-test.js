@@ -374,10 +374,7 @@ describe('m3u8stream', () => {
         m3u8stream('http://media.example.com/playlist.m3u8', {
           parser: 'baaaaad'
         });
-      }, {
-        name: 'TypeError',
-        message: /parser '\w+' not supported/,
-      });
+      }, /parser '\w+' not supported/);
     });
   });
 });

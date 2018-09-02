@@ -124,7 +124,8 @@ describe('m3u8stream', () => {
       let scope = nock('http://mysite.com')
         .get('/pl.m3u8')
         .replyWithError('Nooo');
-      let stream = m3u8stream('http://mysite.com/pl.m3u8');
+      let stream = m3u8stream('http://mysite.com/pl.m3u8', {
+        requestOptions: { maxRetries: 0 } });
       stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'Nooo');
@@ -151,7 +152,8 @@ describe('m3u8stream', () => {
         .get('/fileSequence2682.ts').reply(200, 'two')
         .get('/fileSequence2683.ts').reply(200, 'three');
 
-      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+        requestOptions: { maxRetries: 0 } });
       stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'uh oh');
@@ -171,6 +173,7 @@ describe('m3u8stream', () => {
         .get('/fileSequence2682.ts').replyWithError('bad segment');
       let stream = m3u8stream('https://priv.example.com/playme.m3u8', {
         chunkReadahead: 1,
+        requestOptions: { maxRetries: 0 },
       });
       stream.on('error', (err) => {
         assert.equal(err.message, 'bad segment');

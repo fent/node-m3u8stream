@@ -24,7 +24,7 @@
     "test": "istanbul cover node_modules/.bin/_mocha -- test/*-test.js"
   },
   "dependencies": {
-    "miniget": "^1.1.0",
+    "miniget": "^1.4.0",
     "sax": "^1.2.4"
   },
   "devDependencies": {

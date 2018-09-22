@@ -26,12 +26,12 @@ describe('Create a queue', () => {
       }, { concurrency: 3 });
 
       let total = 10, called = 0;
-      function callback() {
+      const callback = () => {
         if (++called === total) {
           done();
         }
         process.nextTick(() => { clock.tick(maxms); });
-      }
+      };
 
       for (let i = 0; i < total; i++) {
         q.push(i, callback);
@@ -49,7 +49,7 @@ describe('Create a queue', () => {
       }, { concurrency: 1 });
 
       let total = 5, called = 0;
-      function callback() { if (++called === total) { done(); } }
+      const callback = () => { if (++called === total) { done(); } };
       for (let i = 0; i < total; i++) {
         q.push(i, callback);
         assert.equal(q.active, 1);

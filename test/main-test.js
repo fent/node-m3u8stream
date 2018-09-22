@@ -4,13 +4,13 @@ const assert     = require('assert');
 const nock       = require('nock');
 
 
-function concat(stream, callback) {
+const concat = (stream, callback) => {
   let body = '';
   stream.setEncoding('utf8');
   stream.on('data', (chunk) => { body += chunk; });
   stream.on('error', callback);
   stream.on('end', () => { callback(null, body); });
-}
+};
 
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
@@ -74,7 +74,7 @@ describe('m3u8stream', () => {
         .get('/fileSequence2689.ts').reply(200, 'imbe')
         .get('/fileSequence2690.ts').reply(200, 'java');
 
-      function passSomeTime() {
+      const passSomeTime = () => {
         scope.get('/playlist.m3u8')
           .replyWithFile(200, path.resolve(__dirname,
             'playlists/live-2.2.m3u8'))
@@ -88,7 +88,7 @@ describe('m3u8stream', () => {
           .get('/fileSequence2698.ts').reply(200, 'quince')
           .get('/fileSequence2699.ts').reply(200, 'raspberry')
           .get('/fileSequence2700.ts').reply(200, 'strawberry');
-      }
+      };
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
       concat(stream, (err, body) => {
@@ -160,7 +160,7 @@ describe('m3u8stream', () => {
         done();
       });
       stream.on('end', () => {
-        throw new Error('Should not emit end');
+        throw Error('Should not emit end');
       });
     });
 
@@ -181,7 +181,7 @@ describe('m3u8stream', () => {
         done();
       });
       stream.on('end', () => {
-        throw new Error('Should not emit end');
+        throw Error('Should not emit end');
       });
     });
 
@@ -200,7 +200,7 @@ describe('m3u8stream', () => {
             .get('/fileSequence0007.ts').reply(200, '07')
             .get('/fileSequence0008.ts').reply(200, '08');
 
-          function passSomeTime() {
+          const passSomeTime = () => {
             scope.get('/playlist.m3u8')
               .replyWithFile(200, path.resolve(__dirname,
                 'playlists/youtube-live-1.2.m3u8'))
@@ -208,7 +208,7 @@ describe('m3u8stream', () => {
               .get('/fileSequence0010.ts').reply(200, '10')
               .get('/fileSequence0011.ts').reply(200, '11')
               .get('/fileSequence0012.ts').reply(200, '12');
-          }
+          };
 
           let stream = m3u8stream('https://yt.com/playlist.m3u8', {
             begin: Date.now()
@@ -247,7 +247,7 @@ describe('m3u8stream', () => {
             .get('/fileSequence0007.ts').reply(200, '07')
             .get('/fileSequence0008.ts').reply(200, '08');
 
-          function passSomeTime() {
+          const passSomeTime = () => {
             scope.get('/playlist.m3u8')
               .replyWithFile(200, path.resolve(__dirname,
                 'playlists/youtube-live-1.2.m3u8'))
@@ -255,7 +255,7 @@ describe('m3u8stream', () => {
               .get('/fileSequence0010.ts').reply(200, '10')
               .get('/fileSequence0011.ts').reply(200, '11')
               .get('/fileSequence0012.ts').reply(200, '12');
-          }
+          };
 
           let stream = m3u8stream('https://yt.com/playlist.m3u8', { begin: '10s' });
           concat(stream, (err, body) => {

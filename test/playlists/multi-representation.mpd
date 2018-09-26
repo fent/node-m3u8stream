@@ -25,6 +25,7 @@ availabilityStartTime="2018-08-20T12:24:22">
       <Representation id="139">
         <BaseURL>https://videohost.com/139/</BaseURL>
         <SegmentList>
+          <Initialization sourceURL="0000.ts" />
           <SegmentURL media="0001.ts" />
           <SegmentURL media="0002.ts" />
           <SegmentURL media="0003.ts" />
@@ -40,6 +41,7 @@ availabilityStartTime="2018-08-20T12:24:22">
       <Representation id="140" bandwidth="144000">
         <BaseURL>https://videohost.com/140/</BaseURL>
         <SegmentList>
+          <Initialization sourceURL="0000.ts" />
           <SegmentURL media="0001.ts" />
           <SegmentURL media="0002.ts" />
           <SegmentURL media="0003.ts" />

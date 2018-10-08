@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "istanbul": "^0.4.5",
-    "lolex": "^2.7.1",
+    "lolex": "^3.0.0",
     "mocha": "^5.0.0",
     "nock": "^10.0.0"
   },

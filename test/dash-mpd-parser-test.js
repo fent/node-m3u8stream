@@ -5,7 +5,7 @@ const assert        = require('assert');
 
 
 describe('dash MPD parser', () => {
-  describe('A playlist with one representation', () => {
+  describe('Playlist with one representation', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/simple.mpd');
       let items = [];
@@ -45,7 +45,7 @@ describe('dash MPD parser', () => {
     });
   });
 
-  describe('A playlist with multiple representations', () => {
+  describe('Playlist with multiple representations', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname,
         'playlists/multi-representation.mpd');
@@ -150,7 +150,7 @@ describe('dash MPD parser', () => {
     });
   });
 
-  describe('A static playlist', () => {
+  describe('Static playlist', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/example.mpd');
       let items = [];
@@ -186,6 +186,90 @@ describe('dash MPD parser', () => {
             duration: 60000, seq: 9 },
         ]);
         done();
+      });
+    });
+  });
+
+  describe('Playlist with segmentTemplate', () => {
+    it('Segments are generated and emitted', (done) => {
+      let filepath = path.resolve(__dirname, 'playlists/segment-template.mpd');
+      let items = [];
+      let endlist = false;
+      let timescale = 22050;
+      const parser = new DashMPDParser();
+      parser.on('item', (item) => { items.push(item); });
+      parser.on('endlist', () => { endlist = true; });
+      parser.on('error', done);
+      let rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          { url: 'media/audio/und/init.mp4',
+            duration: 0, seq: 0 },
+          { url: 'media/audio/und/seg-1.m4f',
+            duration: 44032 / timescale * 1000, seq: 1 },
+          { url: 'media/audio/und/seg-2.m4f',
+            duration: 44032 / timescale * 1000, seq: 2 },
+          { url: 'media/audio/und/seg-3.m4f',
+            duration: 44032 / timescale * 1000, seq: 3 },
+          { url: 'media/audio/und/seg-4.m4f',
+            duration: 45056 / timescale * 1000, seq: 4 },
+          { url: 'media/audio/und/seg-5.m4f',
+            duration: 44032 / timescale * 1000, seq: 5 },
+          { url: 'media/audio/und/seg-6.m4f',
+            duration: 44032 / timescale * 1000, seq: 6 },
+          { url: 'media/audio/und/seg-7.m4f',
+            duration: 44032 / timescale * 1000, seq: 7 },
+          { url: 'media/audio/und/seg-8.m4f',
+            duration: 44032 / timescale * 1000, seq: 8 },
+          { url: 'media/audio/und/seg-9.m4f',
+            duration: 44032 / timescale * 1000, seq: 9 },
+          { url: 'media/audio/und/seg-10.m4f',
+            duration: 45056 / timescale * 1000, seq: 10 },
+          { url: 'media/audio/und/seg-11.m4f',
+            duration: 44032 / timescale * 1000, seq: 11 },
+          { url: 'media/audio/und/seg-12.m4f',
+            duration: 44032 / timescale * 1000, seq: 12 },
+          { url: 'media/audio/und/seg-13.m4f',
+            duration: 44032 / timescale * 1000, seq: 13 },
+          { url: 'media/audio/und/seg-14.m4f',
+            duration: 44032 / timescale * 1000, seq: 14 },
+          { url: 'media/audio/und/seg-15.m4f',
+            duration: 44032 / timescale * 1000, seq: 15 },
+          { url: 'media/audio/und/seg-16.m4f',
+            duration: 3904 / timescale * 1000, seq: 16 },
+        ]);
+        done();
+      });
+    });
+
+    describe('Without initialization segment', () => {
+      it('Segments are generated and emitted', (done) => {
+        let filepath = path.resolve(__dirname, 'playlists/segment-template-2.mpd');
+        let items = [];
+        let endlist = false;
+        let timescale = 1000;
+        const parser = new DashMPDParser();
+        parser.on('item', (item) => { items.push(item); });
+        parser.on('endlist', () => { endlist = true; });
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.ok(endlist);
+          assert.deepEqual(items, [
+            { url: 'audio/und/seg-0.m4f',
+              duration: 2000 / timescale * 1000, seq: 0 },
+            { url: 'audio/und/seg-1.m4f',
+              duration: 2000 / timescale * 1000, seq: 1 },
+            { url: 'audio/und/seg-2.m4f',
+              duration: 2000 / timescale * 1000, seq: 2 },
+            { url: 'audio/und/seg-3.m4f',
+              duration: 2000 / timescale * 1000, seq: 3 },
+          ]);
+          done();
+        });
       });
     });
   });

@@ -35,7 +35,17 @@ Creates a readable stream of binary media data. `options` can have the following
 * `parser` - Either "m3u8" or "dash-mpd". Defaults to guessing based on the playlist url ending in `.m3u8` or `.mpd`.
 * `id` - For playlist containing multiple media options. If not given, the first representation will be picked.
 
-Stream has an `.end()` method, that if called, stops requesting segments, and refreshing the playlist.
+### Stream#end()
+
+If called, stops requesting segments, and refreshing the playlist.
+
+#### Event: progress
+* `number` - Current segment number.
+* `number` - Total number of segments.
+* `number` - Bytes downloaded up to this point.
+* `string` - URL of current segment.
+
+For static non-live playlists, emitted each time a segment has finished downloading. Since total download size is unknown until all segment endpoints are hit, progress is calculated based on how many segments are available.
 
 ### Limitations
 

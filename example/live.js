@@ -5,7 +5,7 @@ if (!playlist) {
   const path = require('path');
   const filepath = path.relative(process.cwd(), __filename);
   console.error('Must provide link to  playlist');
-  console.error('node ' + filepath + ' [playlist]');
+  console.error('usage: node ' + filepath + ' <playlist url>');
 } else {
   m3u8stream(playlist).pipe(process.stdout);
 }

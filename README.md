@@ -32,8 +32,8 @@ Creates a readable stream of binary media data. `options` can have the following
 * `chunkReadahead` - How many chunks to preload ahead. Default is `3`.
 * `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
 * `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
-* `parser` - Either "m3u8" or "dash-mpd". Defaults to "m3u8".
-* `id` - If playlist contains multiple media options. Otherwise, the first representation will be picked.
+* `parser` - Either "m3u8" or "dash-mpd". Defaults to guessing based on the playlist url ending in `.m3u8` or `.mpd`.
+* `id` - For playlist containing multiple media options. If not given, the first representation will be picked.
 
 Stream has an `.end()` method, that if called, stops requesting segments, and refreshing the playlist.
 

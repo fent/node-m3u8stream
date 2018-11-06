@@ -348,7 +348,6 @@ describe('m3u8stream', () => {
         .get('/134/0009.ts').reply(200, '09')
         .get('/134/0010.ts').reply(200, '10');
       let stream = m3u8stream('https://videohost.com/playlist.mpd', {
-        parser: 'dash-mpd',
         id: '134',
       });
       concat(stream, (err, body) => {

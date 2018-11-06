@@ -11,12 +11,11 @@ if (!playlist) {
 } else {
   const stream = m3u8stream(playlist);
   stream.pipe(fs.createWriteStream('media.mp4'));
-  stream.on('progress', (segmentNumber, totalSegments, bytesDownloaded) => {
-    const percent = segmentNumber / totalSegments;
+  stream.on('progress', (segment, totalSegments, downloaded) => {
     readline.cursorTo(process.stdout, 0);
     process.stdout.write(
-      `${segmentNumber} of ${totalSegments} segments ` +
-      `(${(percent * 100).toFixed(2)}%) ` +
-      `${(bytesDownloaded / 1024 / 1024).toFixed(2)}MB downloaded`);
+      `${segment.num} of ${totalSegments} segments ` +
+      `(${(segment.num / totalSegments * 100).toFixed(2)}%) ` +
+      `${(downloaded / 1024 / 1024).toFixed(2)}MB downloaded`);
   });
 }

@@ -52,6 +52,46 @@ describe('m3u8stream', () => {
         done();
       });
     });
+
+    it('Tracks segment download progress', (done) => {
+      let scope = nock('http://media.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
+        .get('/first.ts').reply(200, 'one')
+        .get('/second.ts').reply(200, 'two')
+        .get('/third.ts').reply(200, 'three');
+      let stream = m3u8stream('http://media.example.com/playlist.m3u8');
+      let progress = [];
+      stream.on('progress', (segment, total, downloaded) => {
+        progress.push([segment, total, downloaded]);
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwothree');
+        assert.deepEqual(progress, [
+          [{
+            duration: 9009,
+            num: 1,
+            size: 3,
+            url: 'http://media.example.com/first.ts',
+          }, 3, 3],
+          [{
+            duration: 9009,
+            num: 2,
+            size: 3,
+            url: 'http://media.example.com/second.ts',
+          }, 3, 6],
+          [{
+            duration: 3003,
+            num: 3,
+            size: 5,
+            url: 'http://media.example.com/third.ts',
+          }, 3, 11],
+        ]);
+        done();
+      });
+    });
   });
 
   describe('Live media playlist', () => {

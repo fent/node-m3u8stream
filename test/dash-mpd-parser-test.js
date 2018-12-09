@@ -11,12 +11,15 @@ describe('dash MPD parser', () => {
       let items = [];
       let endlist = false;
       const parser = new DashMPDParser();
+      let starttime;
+      parser.on('starttime', a => starttime = a);
       parser.on('item', (item) => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
       rs.pipe(parser);
       rs.on('end', () => {
+        assert.equal(new Date(starttime).toISOString(), '2018-08-20T16:24:21.942Z');
         assert.ok(!endlist);
         assert.deepEqual(items, [
           { url: 'https://videohost.com/139/0001.ts',

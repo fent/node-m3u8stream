@@ -19,7 +19,8 @@ describe('dash MPD parser', () => {
       let rs = fs.createReadStream(filepath);
       rs.pipe(parser);
       rs.on('end', () => {
-        assert.equal(new Date(starttime).toISOString(), '2018-08-20T16:24:21.942Z');
+        assert.equal(new Date(starttime).toLocaleTimeString().split(' ')[0],
+          '12:24:21');
         assert.ok(!endlist);
         assert.deepEqual(items, [
           { url: 'https://videohost.com/139/0001.ts',

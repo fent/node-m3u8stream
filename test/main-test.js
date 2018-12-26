@@ -14,7 +14,9 @@ const concat = (stream, callback) => {
 
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
-  before(() => { global.setTimeout = (fn) => { setTimeout(fn); }; });
+  before(() => { global.setTimeout = (fn, ms, ...args) => {
+    setTimeout(fn, 0, ...args);
+  }; });
   after(() => { global.setTimeout = setTimeout; });
   before(() => { nock.disableNetConnect(); });
   after(() => { nock.enableNetConnect(); });

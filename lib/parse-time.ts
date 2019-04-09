@@ -14,7 +14,7 @@ const timeUnits = {
   m: 60000,
   h: 3600000,
 };
-exports.humanStr = (time) => {
+export const humanStr = (time: number | string) => {
   if (typeof time === 'number') { return time; }
   if (numberFormat.test(time)) { return +time; }
   const firstFormat = timeFormat.exec(time);
@@ -28,6 +28,7 @@ exports.humanStr = (time) => {
     const r = /(-?\d+)(ms|s|m|h)/g;
     let rs;
     while ((rs = r.exec(time)) != null) {
+      // @ts-ignore
       total += +rs[1] * timeUnits[rs[2]];
     }
     return total;
@@ -40,11 +41,12 @@ exports.humanStr = (time) => {
  * @param {string} time
  * @return {number}
  */
-exports.durationStr = (time) => {
+export const durationStr = (time: string) => {
   let total = 0;
   const r = /(\d+(?:\.\d+)?)(S|M|H)/g;
-  let rs;
+  let rs: RegExpExecArray | null;
   while ((rs = r.exec(time)) != null) {
+    // @ts-ignore
     total += +rs[1] * timeUnits[rs[2].toLowerCase()];
   }
   return total;

@@ -16,11 +16,12 @@
     "url": "git://github.com/fent/node-m3u8stream.git"
   },
   "author": "fent (https://github.com/fent)",
-  "main": "./lib/index.js",
+  "main": "./dist/index.js",
   "files": [
-    "lib"
+    "dist"
   ],
   "scripts": {
+    "build": "tsc",
     "test": "istanbul cover node_modules/.bin/_mocha -- test/*-test.js"
   },
   "dependencies": {
@@ -28,10 +29,13 @@
     "sax": "^1.2.4"
   },
   "devDependencies": {
+    "@types/node": "^11.13.2",
+    "@types/sax": "^1.0.1",
     "istanbul": "^0.4.5",
     "lolex": "^3.0.0",
     "mocha": "^6.0.0",
-    "nock": "^10.0.0"
+    "nock": "^10.0.0",
+    "typescript": "^3.4.2"
   },
   "engines": {
     "node": ">=6"

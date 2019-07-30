@@ -7,7 +7,7 @@ Reads segments from a [m3u8 playlist][1] or [DASH MPD file][2] into a consumable
 
 [![Build Status](https://secure.travis-ci.org/fent/node-m3u8stream.svg)](http://travis-ci.org/fent/node-m3u8stream)
 [![Dependency Status](https://david-dm.org/fent/node-m3u8stream.svg)](https://david-dm.org/fent/node-m3u8stream)
-[![codecov](https://codecov.io/gh/fent/node-m3u8stream/branch/master/graph/badge.svg)](https://codecov.io/gh/fent/node-m3u8stream)
+[![codecov](https://codecov.io/gh/fent/node-m3u8stream/branch/master/graph/badge.svg)](https://codecov.io/gh/fent/node-m3u8stream) [![Greenkeeper badge](https://badges.greenkeeper.io/fent/node-m3u8stream.svg)](https://greenkeeper.io/)
 
 
 # Usage

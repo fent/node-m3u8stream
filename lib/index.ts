@@ -21,7 +21,7 @@ interface m3u8streamOptions {
  * @param {Object} options
  * @return {stream.Readable}
  */
-export default (playlistURL: string, options: m3u8streamOptions = {}) => {
+export = (playlistURL: string, options: m3u8streamOptions = {}) => {
   const stream = new PassThrough();
   const chunkReadahead = options.chunkReadahead || 3;
   const liveBuffer = options.liveBuffer || 20000; // 20 seconds

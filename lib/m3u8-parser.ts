@@ -6,7 +6,7 @@ import { Writable } from 'stream';
  * @extends WritableStream
  * @constructor
  */
-export default class m3u8Parser extends Writable {
+export = class m3u8Parser extends Writable {
   _lastLine: string;
   _seq: number;
   _nextItemDuration: number | null;

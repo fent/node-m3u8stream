@@ -1,4 +1,4 @@
-const Queue  = require('../dist/queue').default;
+const Queue  = require('../dist/queue');
 const assert = require('assert');
 const lolex  = require('lolex');
 

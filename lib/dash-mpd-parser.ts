@@ -9,7 +9,7 @@ import { durationStr } from './parse-time';
  * @extends WRitableStream
  * @constructor
  */
-export default class DashMPDParser extends Writable {
+export = class DashMPDParser extends Writable {
   _parser: any;
 
   constructor(targetID: any) {

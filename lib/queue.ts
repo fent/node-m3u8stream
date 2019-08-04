@@ -3,7 +3,7 @@ interface Task {
   callback: (err?: Error, result?: any) => void;
 }
 
-export default class Queue {
+export = class Queue {
   _worker: (item: any, cb: (err?: Error, result?: any) => void) => void;
   _concurrency: number;
   tasks: Task[];

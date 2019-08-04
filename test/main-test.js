@@ -1,4 +1,4 @@
-const m3u8stream = require('..').default;
+const m3u8stream = require('..');
 const path       = require('path');
 const assert     = require('assert');
 const nock       = require('nock');

@@ -1,4 +1,4 @@
-const DashMPDParser = require('../dist/dash-mpd-parser').default;
+const DashMPDParser = require('../dist/dash-mpd-parser');
 const fs            = require('fs');
 const path          = require('path');
 const assert        = require('assert');

@@ -1,10 +1,10 @@
 interface Task {
   item: {};
-  callback: (ret: Error | number) => void;
+  callback: (err?: Error, result?: any) => void;
 }
 
 export default class Queue {
-  _worker: (item: any, cb: (err: Error | number) => void) => void;
+  _worker: (item: any, cb: (err?: Error, result?: any) => void) => void;
   _concurrency: number;
   tasks: Task[];
   total: number;
@@ -16,7 +16,7 @@ export default class Queue {
    * @param {Function(Object, Function)} worker
    * @param {Object} options
    */
-  constructor(worker: (item: any, cb: (ret: Error | number) => void) => void, options?: { concurrency?: number }) {
+  constructor(worker: (item: any, cb: (err?: Error, result?: any) => void) => void, options?: { concurrency?: number }) {
     this._worker = worker;
     options = options || {};
     this._concurrency = options.concurrency || 1;
@@ -30,9 +30,9 @@ export default class Queue {
    * Push a task to the queue.
    *
    * @param {Object} item
-   * @param {Function(Error)} callback
+   * @param {Function(Error, result)} callback
    */
-  push(item: {}, callback: (ret: number | Error) => void) {
+  push(item: {}, callback: (err?: Error, result?: any) => void) {
     this.tasks.push({ item, callback });
     this.total++;
     this._next();
@@ -47,11 +47,11 @@ export default class Queue {
     const { item, callback } = this.tasks.shift() as Task;
     let callbackCalled = false;
     this.active++;
-    this._worker(item, (err) => {
+    this._worker(item, (err, result) => {
       if (callbackCalled) { return; }
       this.active--;
       callbackCalled = true;
-      if (callback) { callback(err); }
+      if (callback) { callback(err, result); }
       this._next();
     });
   }

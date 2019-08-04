@@ -21,9 +21,8 @@ interface m3u8streamOptions {
  * @param {Object} options
  * @return {stream.Readable}
  */
-export default (playlistURL: string, options?: m3u8streamOptions) => {
+export default (playlistURL: string, options: m3u8streamOptions = {}) => {
   const stream = new PassThrough();
-  options = options || {};
   const chunkReadahead = options.chunkReadahead || 3;
   const liveBuffer = options.liveBuffer || 20000; // 20 seconds
   const requestOptions = options.requestOptions;
@@ -34,12 +33,12 @@ export default (playlistURL: string, options?: m3u8streamOptions) => {
   if (!Parser) {
     throw TypeError(`parser '${options.parser}' not supported`);
   }
-  let relativeBegin = typeof options.begin === 'string';
-  let begin = relativeBegin ?
-    // @ts-ignore this won't be called if options.begin isn't a string
-    humanStr(options.begin) :
-    // @ts-ignore
-    Math.max(options.begin - liveBuffer, 0) || 0;
+  let begin = 0;
+  if (typeof options.begin !== 'undefined') {
+    begin = typeof options.begin === 'string' ?
+      humanStr(options.begin) :
+      Math.max(options.begin - liveBuffer, 0);
+  }
   let liveBegin = Date.now() - liveBuffer;
 
   let currSegment;
@@ -50,18 +49,16 @@ export default (playlistURL: string, options?: m3u8streamOptions) => {
     let size = 0;
     req.on('data', (chunk) => size += chunk.length);
     req.pipe(stream, { end: false });
-    req.on('end', () => callback(size));
+    req.on('end', () => callback(undefined, size));
   }, { concurrency: 1 });
 
   let segmentNumber = 0;
   let downloaded = 0;
-  // @ts-ignore
   const requestQueue = new Queue((segment, callback: () => void) => {
     let req = miniget(urlResolve(playlistURL, segment.url), requestOptions);
     req.on('error', callback);
-    streamQueue.push(req, (size) => {
-      // @ts-ignore
-      downloaded += size;
+    streamQueue.push(req, (err, size) => {
+      downloaded += +size;
       stream.emit('progress', {
         num: ++segmentNumber,
         size: size,
@@ -109,12 +106,11 @@ export default (playlistURL: string, options?: m3u8streamOptions) => {
     lastRefresh = Date.now();
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);
-    // @ts-ignore
     const parser = currPlaylist.pipe(new Parser(options.id));
-    let starttime = null;
+    let starttime = 0;
     parser.on('starttime', (a) => {
       starttime = a;
-      if (relativeBegin && begin >= 0) {
+      if (typeof options.begin === 'string'  && begin >= 0) {
         begin += starttime;
       }
     });
@@ -185,8 +181,7 @@ export default (playlistURL: string, options?: m3u8streamOptions) => {
       currSegment.unpipe();
       currSegment.abort();
     }
-    // @ts-ignore
-    PassThrough.prototype.end.call(stream);
+    PassThrough.prototype.end.call(stream, null);
   };
 
   return stream;

@@ -43,7 +43,7 @@
   "devDependencies": {
     "@types/node": "^11.13.2",
     "@types/sax": "^1.0.1",
-    "lolex": "^3.0.0",
+    "lolex": "^4.0.1",
     "mocha": "^6.0.0",
     "nock": "^10.0.0",
     "nyc": "^14.1.1",

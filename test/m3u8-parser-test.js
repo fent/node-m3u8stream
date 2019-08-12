@@ -1,4 +1,4 @@
-const m3u8Parser = require('../lib/m3u8-parser');
+const m3u8Parser = require('../dist/m3u8-parser');
 const fs         = require('fs');
 const path       = require('path');
 const assert     = require('assert');

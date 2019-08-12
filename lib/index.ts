@@ -1,34 +1,44 @@
-const PassThrough   = require('stream').PassThrough;
-const urlResolve    = require('url').resolve;
-const miniget       = require('miniget');
-const m3u8Parser    = require('./m3u8-parser');
-const DashMPDParser = require('./dash-mpd-parser');
-const Queue         = require('./queue');
-const parseTime     = require('./parse-time');
+import { PassThrough } from 'stream';
+import { resolve as urlResolve } from 'url';
+import miniget from 'miniget';
+import m3u8Parser from './m3u8-parser';
+import DashMPDParser from './dash-mpd-parser';
+import Queue from './queue';
+import { humanStr } from './parse-time';
 
+interface m3u8streamOptions {
+  begin?: number | string;
+  liveBuffer?: number;
+  chunkReadahead?: number;
+  highWaterMark?: number;
+  requestOptions?: any;
+  parser?: 'm3u8' | 'dash-mpd';
+  id?: any;
+}
 
 /**
  * @param {string} playlistURL
  * @param {Object} options
  * @return {stream.Readable}
  */
-module.exports = (playlistURL, options) => {
+export = (playlistURL: string, options: m3u8streamOptions = {}) => {
   const stream = new PassThrough();
-  options = options || {};
   const chunkReadahead = options.chunkReadahead || 3;
   const liveBuffer = options.liveBuffer || 20000; // 20 seconds
   const requestOptions = options.requestOptions;
-  const Parser = {
+  const Parser: any = {
     'm3u8': m3u8Parser,
     'dash-mpd': DashMPDParser,
   }[options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8')];
   if (!Parser) {
     throw TypeError(`parser '${options.parser}' not supported`);
   }
-  let relativeBegin = typeof options.begin === 'string';
-  let begin = relativeBegin ?
-    parseTime.humanStr(options.begin) :
-    Math.max(options.begin - liveBuffer, 0) || 0;
+  let begin = 0;
+  if (typeof options.begin !== 'undefined') {
+    begin = typeof options.begin === 'string' ?
+      humanStr(options.begin) :
+      Math.max(options.begin - liveBuffer, 0);
+  }
   let liveBegin = Date.now() - liveBuffer;
 
   let currSegment;
@@ -39,16 +49,16 @@ module.exports = (playlistURL, options) => {
     let size = 0;
     req.on('data', (chunk) => size += chunk.length);
     req.pipe(stream, { end: false });
-    req.on('end', () => callback(size));
+    req.on('end', () => callback(undefined, size));
   }, { concurrency: 1 });
 
   let segmentNumber = 0;
   let downloaded = 0;
-  const requestQueue = new Queue((segment, callback) => {
+  const requestQueue = new Queue((segment, callback: () => void) => {
     let req = miniget(urlResolve(playlistURL, segment.url), requestOptions);
     req.on('error', callback);
-    streamQueue.push(req, (size) => {
-      downloaded += size;
+    streamQueue.push(req, (err, size) => {
+      downloaded += +size;
       stream.emit('progress', {
         num: ++segmentNumber,
         size: size,
@@ -97,18 +107,18 @@ module.exports = (playlistURL, options) => {
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);
     const parser = currPlaylist.pipe(new Parser(options.id));
-    let starttime = null;
+    let starttime = 0;
     parser.on('starttime', (a) => {
       starttime = a;
-      if (relativeBegin && begin >= 0) {
+      if (typeof options.begin === 'string'  && begin >= 0) {
         begin += starttime;
       }
     });
     parser.on('endlist', () => { isStatic = true; });
     parser.on('endearly', () => { currPlaylist.unpipe(parser); });
 
-    let addedItems = [];
-    let liveAddedItems = [];
+    let addedItems: any[] = [];
+    let liveAddedItems: any[] = [];
     const addItem = (item, isLive) => {
       if (item.seq <= lastSeq) { return; }
       lastSeq = item.seq;
@@ -120,7 +130,7 @@ module.exports = (playlistURL, options) => {
       }
     };
 
-    let tailedItems = [], tailedItemsDuration = 0;
+    let tailedItems: any[] = [], tailedItemsDuration = 0;
     parser.on('item', (item) => {
       item.time = starttime;
       if (!starttime || begin <= item.time) {
@@ -171,7 +181,7 @@ module.exports = (playlistURL, options) => {
       currSegment.unpipe();
       currSegment.abort();
     }
-    PassThrough.prototype.end.call(stream);
+    PassThrough.prototype.end.call(stream, null);
   };
 
   return stream;

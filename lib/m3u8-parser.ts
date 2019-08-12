@@ -1,5 +1,4 @@
-const Writable = require('stream').Writable;
-
+import { Writable } from 'stream';
 
 /**
  * A very simple m3u8 playlist file parser that detects tags and segments.
@@ -7,7 +6,11 @@ const Writable = require('stream').Writable;
  * @extends WritableStream
  * @constructor
  */
-module.exports = class m3u8Parser extends Writable {
+export = class m3u8Parser extends Writable {
+  _lastLine: string;
+  _seq: number;
+  _nextItemDuration: number | null;
+
   constructor() {
     super();
     this._lastLine = '';
@@ -19,7 +22,7 @@ module.exports = class m3u8Parser extends Writable {
     });
   }
 
-  _parseLine(line) {
+  _parseLine(line: string) {
     let match = line.match(/^#(EXT[A-Z0-9-]+)(?::(.*))?/);
     if (match) {
       // This is a tag.
@@ -27,13 +30,16 @@ module.exports = class m3u8Parser extends Writable {
       const value = match[2] || null;
       switch (tag) {
         case 'EXT-X-PROGRAM-DATE-TIME':
+          // @ts-ignore
           this.emit('starttime', new Date(value).getTime());
           break;
         case 'EXT-X-MEDIA-SEQUENCE':
+          // @ts-ignore
           this._seq = parseInt(value);
           break;
         case 'EXTINF':
           this._nextItemDuration =
+            // @ts-ignore
             Math.round(parseFloat(value.split(',')[0]) * 1000);
           break;
         case 'EXT-X-ENDLIST':
@@ -51,10 +57,10 @@ module.exports = class m3u8Parser extends Writable {
     }
   }
 
-  _write(chunk, encoding, callback) {
-    let lines = chunk.toString('utf8').split('\n');
+  _write(chunk: any, encoding: any, callback: () => void) {
+    let lines: string[] = chunk.toString('utf8').split('\n');
     if (this._lastLine) { lines[0] = this._lastLine + lines[0]; }
-    lines.forEach((line, i) => {
+    lines.forEach((line: string, i: number) => {
       if (i < lines.length - 1) {
         this._parseLine(line);
       } else {
@@ -64,4 +70,4 @@ module.exports = class m3u8Parser extends Writable {
     });
     callback();
   }
-};
+}

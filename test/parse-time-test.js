@@ -1,5 +1,5 @@
 const assert = require('assert');
-const parseTime = require('../lib/parse-time');
+const parseTime = require('../dist/parse-time');
 
 
 describe('parse-time', () => {

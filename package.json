@@ -41,7 +41,7 @@
     "sax": "^1.2.4"
   },
   "devDependencies": {
-    "@types/node": "^11.13.2",
+    "@types/node": "^12.7.2",
     "@types/sax": "^1.0.1",
     "lolex": "^4.0.1",
     "mocha": "^6.0.0",

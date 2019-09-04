@@ -104,7 +104,7 @@ describe('m3u8stream', () => {
           'playlists/live-2.1.m3u8'))
         .get('/fileSequence2681.ts').reply(() => {
           process.nextTick(passSomeTime);
-          return 'apple';
+          return [200, 'apple'];
         })
         .get('/fileSequence2682.ts').reply(200, 'banana')
         .get('/fileSequence2683.ts').reply(200, 'cherry')
@@ -189,7 +189,7 @@ describe('m3u8stream', () => {
               .get('/playlist.m3u8')
               .replyWithError('uh oh');
           });
-          return 'one';
+          return [200, 'one'];
         })
         .get('/fileSequence2682.ts').reply(200, 'two')
         .get('/fileSequence2683.ts').reply(200, 'three');
@@ -236,7 +236,7 @@ describe('m3u8stream', () => {
               'playlists/youtube-live-1.1.m3u8'))
             .get('/fileSequence0005.ts').reply(() => {
               process.nextTick(passSomeTime);
-              return '05';
+              return [200, '05'];
             })
             .get('/fileSequence0006.ts').reply(200, '06')
             .get('/fileSequence0007.ts').reply(200, '07')
@@ -281,7 +281,7 @@ describe('m3u8stream', () => {
               'playlists/youtube-live-1.1.m3u8'))
             .get('/fileSequence0003.ts').reply(() => {
               process.nextTick(passSomeTime);
-              return '03';
+              return [200, '03'];
             })
             .get('/fileSequence0004.ts').reply(200, '04')
             .get('/fileSequence0005.ts').reply(200, '05')
@@ -351,8 +351,8 @@ describe('m3u8stream', () => {
             .get('/fileSequence2683.ts').reply(200, 'cherry')
             .get('/fileSequence2684.ts').reply(200, 'durango')
             .get('/fileSequence2685.ts').reply(() => {
-              stream.end();
-              return 'whatever';
+              setTimeout(stream.end);
+              return [200, 'whatever'];
             });
           let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
             chunkReadahead: 1,
@@ -365,6 +365,7 @@ describe('m3u8stream', () => {
               'banana',
               'cherry',
               'durango',
+              'whatever',
             ].join(''));
             done();
           });

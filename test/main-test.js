@@ -350,12 +350,14 @@ describe('m3u8stream', () => {
             .get('/fileSequence2682.ts').reply(200, 'banana')
             .get('/fileSequence2683.ts').reply(200, 'cherry')
             .get('/fileSequence2684.ts').reply(200, 'durango')
-            .get('/fileSequence2685.ts').reply(() => {
-              setTimeout(stream.end);
-              return [200, 'whatever'];
-            });
+            .get('/fileSequence2685.ts').reply(200, 'whatever');
           let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
             chunkReadahead: 1,
+          });
+          stream.on('progress', ({ num }) => {
+            if (num === 5) {
+              stream.end();
+            }
           });
           concat(stream, (err, body) => {
             assert.ifError(err);

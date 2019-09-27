@@ -128,8 +128,8 @@ describe('dash MPD parser', () => {
               duration: 2000, seq: 10 },
           ]);
           done();
-        })
-      })
+        });
+      });
     });
 
     describe('With a target representation that isn\'t found', () => {

@@ -2,19 +2,16 @@
  * Converts human friendly time to milliseconds. Supports the format
  * 00:00:00.000 for hours, minutes, seconds, and milliseconds respectively.
  * And 0ms, 0s, 0m, 0h, and together 1m1s.
- *
- * @param {string|number} time
- * @return {number}
  */
 const numberFormat = /^\d+$/;
 const timeFormat = /^(?:(?:(\d+):)?(\d{1,2}):)?(\d{1,2})(?:\.(\d{3}))?$/;
-const timeUnits = {
+const timeUnits: { [key: string]: number } = {
   ms: 1,
   s: 1000,
   m: 60000,
   h: 3600000,
 };
-export const humanStr = (time: number | string) => {
+export const humanStr = (time: number | string): number => {
   if (typeof time === 'number') { return time; }
   if (numberFormat.test(time)) { return +time; }
   const firstFormat = timeFormat.exec(time);
@@ -28,7 +25,6 @@ export const humanStr = (time: number | string) => {
     const r = /(-?\d+)(ms|s|m|h)/g;
     let rs;
     while ((rs = r.exec(time)) != null) {
-      // @ts-ignore
       total += +rs[1] * timeUnits[rs[2]];
     }
     return total;
@@ -37,16 +33,12 @@ export const humanStr = (time: number | string) => {
 
 /**
  * Parses a duration string in the form of "123.456S", returns milliseconds.
- *
- * @param {string} time
- * @return {number}
  */
-export const durationStr = (time: string) => {
+export const durationStr = (time: string): number => {
   let total = 0;
   const r = /(\d+(?:\.\d+)?)(S|M|H)/g;
   let rs: RegExpExecArray | null;
   while ((rs = r.exec(time)) != null) {
-    // @ts-ignore
     total += +rs[1] * timeUnits[rs[2].toLowerCase()];
   }
   return total;

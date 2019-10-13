@@ -1,17 +1,18 @@
-const DashMPDParser = require('../dist/dash-mpd-parser');
-const fs            = require('fs');
-const path          = require('path');
-const assert        = require('assert');
+import DashMPDParser from '../dist/dash-mpd-parser';
+import { Item } from '../dist/parser';
+import fs from 'fs';
+import path from 'path';
+import assert from 'assert';
 
 
 describe('dash MPD parser', () => {
   describe('Playlist with one representation', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/simple.mpd');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser();
-      let starttime;
+      let starttime: number;
       parser.on('starttime', a => starttime = a);
       parser.on('item', (item) => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
@@ -53,7 +54,7 @@ describe('dash MPD parser', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname,
         'playlists/multi-representation.mpd');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser('140');
       parser.on('item', (item) => { items.push(item); });
@@ -95,7 +96,7 @@ describe('dash MPD parser', () => {
       it('Emits all segments', (done) => {
         let filepath = path.resolve(__dirname,
           'playlists/multi-representation.mpd');
-        let items = [];
+        let items: Item[] = [];
         let endlist = false;
         const parser = new DashMPDParser('133');
         parser.on('item', (item) => { items.push(item); });
@@ -157,7 +158,7 @@ describe('dash MPD parser', () => {
   describe('Static playlist', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/example.mpd');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser();
       parser.on('item', (item) => { items.push(item); });
@@ -197,7 +198,7 @@ describe('dash MPD parser', () => {
   describe('Playlist with segmentTemplate', () => {
     it('Segments are generated and emitted', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/segment-template.mpd');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       let timescale = 22050;
       const parser = new DashMPDParser();
@@ -251,7 +252,7 @@ describe('dash MPD parser', () => {
     describe('Without initialization segment', () => {
       it('Segments are generated and emitted', (done) => {
         let filepath = path.resolve(__dirname, 'playlists/segment-template-2.mpd');
-        let items = [];
+        let items: Item[] = [];
         let endlist = false;
         let timescale = 1000;
         const parser = new DashMPDParser();

@@ -1,13 +1,14 @@
-const m3u8stream = require('..');
-const path       = require('path');
-const assert     = require('assert');
-const nock       = require('nock');
+import m3u8stream from '../dist/index';
+import path from 'path';
+import assert from 'assert';
+import nock from 'nock';
+import { PassThrough } from 'stream';
 
 
-const concat = (stream, callback) => {
+const concat = (stream: PassThrough, callback: (err: Error, body: string) => void) => {
   let body = '';
   stream.setEncoding('utf8');
-  stream.on('data', (chunk) => { body += chunk; });
+  stream.on('data', (chunk: string) => { body += chunk; });
   stream.on('error', callback);
   stream.on('end', () => { callback(null, body); });
 };
@@ -15,11 +16,9 @@ const concat = (stream, callback) => {
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
   before(() => { global.setTimeout = (fn, ms, ...args) => {
-    setTimeout(fn, 0, ...args);
+    return setTimeout(fn, 0, ...args);
   }; });
   after(() => { global.setTimeout = setTimeout; });
-  before(() => { nock.disableNetConnect(); });
-  after(() => { nock.enableNetConnect(); });
 
   describe('Simple media playlist', () => {
     it('Concatenates segments into stream', (done) => {
@@ -63,7 +62,7 @@ describe('m3u8stream', () => {
         .get('/second.ts').reply(200, 'two')
         .get('/third.ts').reply(200, 'three');
       let stream = m3u8stream('http://media.example.com/playlist.m3u8');
-      let progress = [];
+      let progress: [m3u8stream.Progress, number, number][] = [];
       stream.on('progress', (segment, total, downloaded) => {
         progress.push([segment, total, downloaded]);
       });
@@ -419,6 +418,7 @@ describe('m3u8stream', () => {
     it('Throws bad parser error', () => {
       assert.throws(() => {
         m3u8stream('http://media.example.com/playlist.m3u8', {
+          // @ts-ignore
           parser: 'baaaaad'
         });
       }, /parser '\w+' not supported/);

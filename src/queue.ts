@@ -1,10 +1,11 @@
+type Callback = (err?: Error, result?: any) => void;
 interface Task {
   item: {};
-  callback: (err?: Error, result?: any) => void;
+  callback: Callback;
 }
 
 export = class Queue {
-  _worker: (item: any, cb: (err?: Error, result?: any) => void) => void;
+  _worker: (item: any, cb: Callback) => void;
   _concurrency: number;
   tasks: Task[];
   total: number;
@@ -12,13 +13,9 @@ export = class Queue {
 
   /**
    * A really simple queue with concurrency.
-   *
-   * @param {Function(Object, Function)} worker
-   * @param {Object} options
    */
-  constructor(worker: (item: any, cb: (err?: Error, result?: any) => void) => void, options?: { concurrency?: number }) {
+  constructor(worker: (item: any, cb: Callback) => void, options: { concurrency?: number } = {}) {
     this._worker = worker;
-    options = options || {};
     this._concurrency = options.concurrency || 1;
     this.tasks = [];
     this.total = 0;
@@ -28,11 +25,8 @@ export = class Queue {
 
   /**
    * Push a task to the queue.
-   *
-   * @param {Object} item
-   * @param {Function(Error, result)} callback
    */
-  push(item: {}, callback: (err?: Error, result?: any) => void) {
+  push(item: any, callback?: Callback): void {
     this.tasks.push({ item, callback });
     this.total++;
     this._next();
@@ -42,7 +36,7 @@ export = class Queue {
   /**
    * Process next job in queue.
    */
-  _next() {
+  _next(): void {
     if (this.active >= this._concurrency || !this.tasks.length) { return; }
     const { item, callback } = this.tasks.shift() as Task;
     let callbackCalled = false;
@@ -60,7 +54,7 @@ export = class Queue {
   /**
    * Stops processing queued jobs.
    */
-  die() {
+  die(): void {
     this.tasks = [];
   }
 }

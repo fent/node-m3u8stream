@@ -1,19 +1,18 @@
-const m3u8Parser = require('../dist/m3u8-parser');
-const fs         = require('fs');
-const path       = require('path');
-const assert     = require('assert');
+import m3u8Parser from'../dist/m3u8-parser';
+import { Item } from '../dist/parser';
+import fs from'fs';
+import path from'path';
+import assert from'assert';
 
 
 describe('m3u8 parser', () => {
   describe('Parse segments from a simple playlist', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/simple.m3u8');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
-      parser.on('item', (item) => {
-        items.push(item);
-      });
+      parser.on('item', (item) => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath, { highWaterMark: 16 });
@@ -36,7 +35,7 @@ describe('m3u8 parser', () => {
   describe('Parse segments from a live playlist', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');
-      let items = [];
+      let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
       parser.on('item', (item) => { items.push(item); });

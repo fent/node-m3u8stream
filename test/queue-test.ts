@@ -1,23 +1,24 @@
-const Queue  = require('../dist/queue');
-const assert = require('assert');
-const lolex  = require('lolex');
+import Queue from '../dist/queue';
+import assert from 'assert';
+import lolex from 'lolex';
 
 
 describe('Create a queue', () => {
   describe('With 3 concurrency', () => {
-    let clock;
+    let clock: lolex.InstalledClock;
     before(() => { clock = lolex.install(); });
     after(() => { clock.uninstall(); });
 
     it('Defaults to a set concurrency', (done) => {
-      let maxms;
-      let lastTask;
-      let q = new Queue((task, callback) => {
+      let maxms: number;
+      let lastTask: number;
+      let q = new Queue((task: number, callback: (err?: Error) => void) => {
         if (lastTask) {
           // Make sure tasks are called in order.
           // Even if they don't finish in order.
           assert.equal(lastTask, task - 1);
         }
+        lastTask = task;
         let ms = Math.floor(Math.random() * 1000);
         setTimeout(() => { callback(null); }, ms);
         if (!maxms || ms > maxms) {
@@ -43,7 +44,7 @@ describe('Create a queue', () => {
 
   describe('With 1 concurrency', () => {
     it('Runs tasks sequentially one at a time', (done) => {
-      let q = new Queue((task, callback) => {
+      let q = new Queue((task: number, callback: (err?: Error) => void) => {
         assert.equal(q.active, 1);
         process.nextTick(() => { callback(null); });
       }, { concurrency: 1 });
@@ -59,7 +60,7 @@ describe('Create a queue', () => {
 
   describe('Call worker callback twice', () => {
     it('Calls task callback once', (done) => {
-      let q = new Queue((task, callback) => {
+      let q = new Queue((task: number, callback: (err?: Error) => void) => {
         // Intentionally call callback twice.
         process.nextTick(() => {
           callback(null);
@@ -72,8 +73,8 @@ describe('Create a queue', () => {
 
   describe('Kill it halfway', () => {
     it('Does not run additional tasks', (done) => {
-      let results = [];
-      let q = new Queue((task, callback) => {
+      let results: string[] = [];
+      let q = new Queue((task: string, callback: (err?: Error) => void) => {
         results.push(task);
         process.nextTick(() => {
           callback(null);

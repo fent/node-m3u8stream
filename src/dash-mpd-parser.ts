@@ -1,40 +1,38 @@
 import { Writable } from 'stream';
 import sax from 'sax';
 import { durationStr } from './parse-time';
+import { Parser } from './parser';
 
 
 /**
  * A wrapper around sax that emits segments.
- *
- * @extends WRitableStream
- * @constructor
  */
-export = class DashMPDParser extends Writable {
-  _parser: any;
+export = class DashMPDParser extends Writable implements Parser {
+  private _parser: Writable;
 
-  constructor(targetID: any) {
+  constructor(targetID?: string) {
     super();
     this._parser = sax.createStream(false, { lowercase: true });
     this._parser.on('error', this.emit.bind(this, 'error'));
 
-    let lastTag;
+    let lastTag: string | null;
     let currtime = 0;
     let seq = 0;
-    let segmentTemplate;
-    let timescale, offset, duration, baseURL;
+    let segmentTemplate: { initialization?: string; media: string };
+    let timescale: number, offset: number, duration: number, baseURL: string[];
     let timeline: number[][] = [];
     let getSegments = false;
-    let isStatic;
-    let treeLevel;
-    let periodStart;
+    let isStatic: boolean;
+    let treeLevel: number;
+    let periodStart: number;
 
-    const tmpl = (str) => {
-      const context = {
+    const tmpl = (str: string): string => {
+      const context: { [key: string]: string | number } = {
         RepresentationID: targetID,
         Number: seq,
         Time: currtime,
       };
-      return str.replace(/\$(\w+)\$/g, (m, p1) => context[p1]);
+      return str.replace(/\$(\w+)\$/g, (m, p1) => context[p1] + '');
     };
 
     this._parser.on('opentag', (node) => {
@@ -139,7 +137,7 @@ export = class DashMPDParser extends Writable {
       }
     });
     
-    const onEnd = () => {
+    const onEnd = (): void => {
       if (isStatic) { this.emit('endlist'); }
       if (!getSegments) {
         this.emit('error', Error(`Representation '${targetID}' not found`));
@@ -173,7 +171,7 @@ export = class DashMPDParser extends Writable {
     this.on('finish', onEnd);
   }
 
-  _write(chunk, encoding, callback) {
+  _write(chunk: Buffer, encoding: string, callback: () => void): void {
     this._parser.write(chunk, encoding);
     callback();
   }

@@ -54,6 +54,9 @@ export = class m3u8Parser extends Writable {
         seq: this._seq++,
         duration: this._nextItemDuration,
       });
+    } else if(line.includes("#ID3-EQUIV-TDTG")){
+      let output = line.replace('#ID3-EQUIV-TDTG:','')
+        this.emit('starttime', new Date(output).getTime());
     }
   }
 

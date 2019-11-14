@@ -93,6 +93,50 @@ describe('m3u8stream', () => {
         done();
       });
     });
+
+    describe('With `begin` set using relative format', () => {
+      it('Starts stream on segment that matches `begin`', (done) => {
+        let scope = nock('https://twitch.tv')
+          .get('/videos/sc.m3u8')
+          .replyWithFile(200, path.resolve(__dirname,
+            'playlists/twitch-1.1.m3u8'))
+          .get('/videos/3.ts').reply(200, 'the')
+          .get('/videos/4.ts').reply(200, 'big')
+          .get('/videos/5.ts').reply(200, 'brown')
+          .get('/videos/6.ts').reply(200, 'fox')
+          .get('/videos/7.ts').reply(200, 'jumped')
+          .get('/videos/8.ts').reply(200, 'over')
+          .get('/videos/9.ts').reply(200, 'the')
+          .get('/videos/10.ts').reply(200, 'lazy')
+          .get('/videos/11.ts').reply(200, 'dog')
+          .get('/videos/12.ts').reply(200, 'and')
+          .get('/videos/13.ts').reply(200, 'then')
+          .get('/videos/14.ts').reply(200, 'went')
+          .get('/videos/15.ts').reply(200, 'home');
+
+        let stream = m3u8stream('https://twitch.tv/videos/sc.m3u8', { begin: '30s' });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, [
+            'the',
+            'big',
+            'brown',
+            'fox',
+            'jumped',
+            'over',
+            'the',
+            'lazy',
+            'dog',
+            'and',
+            'then',
+            'went',
+            'home'
+          ].join(''));
+          done();
+        });
+      });
+    });
   });
 
   describe('Live media playlist', () => {
@@ -316,12 +360,6 @@ describe('m3u8stream', () => {
             ].join(''));
             done();
           });
-        });
-      });
-
-      describe('With `begin` set in the past', () => {
-        it('Starts stream on segment that matches `begin`', (done) => {
-          done();
         });
       });
     });

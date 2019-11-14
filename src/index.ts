@@ -118,16 +118,18 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
 
   let currPlaylist: miniget.Stream | null;
   let lastSeq: number;
+  let starttime = 0;
+
   const refreshPlaylist = (): void => {
     fetchingPlaylist = true;
     lastRefresh = Date.now();
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);
     const parser = currPlaylist.pipe(new Parser(options.id));
-    let starttime = 0;
     parser.on('starttime', (a: number) => {
+      if (starttime) { return; }
       starttime = a;
-      if (typeof options.begin === 'string'  && begin >= 0) {
+      if (typeof options.begin === 'string' && begin >= 0) {
         begin += starttime;
       }
     });
@@ -150,8 +152,9 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     let tailedItems: TimedItem[] = [], tailedItemsDuration = 0;
     parser.on('item', (item: Item) => {
       let timedItem = { time: starttime, ...item};
-      if (!starttime || begin <= timedItem.time) {
-        addItem(timedItem, liveBegin <= timedItem.time);
+      let isLive = liveBegin <= timedItem.time;
+      if (begin <= timedItem.time) {
+        addItem(timedItem, isLive);
       } else {
         tailedItems.push(timedItem);
         tailedItemsDuration += timedItem.duration;

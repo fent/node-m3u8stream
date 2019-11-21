@@ -3,6 +3,7 @@ import path from 'path';
 import assert from 'assert';
 import nock from 'nock';
 import { PassThrough } from 'stream';
+import { humanStr } from '../dist/parse-time';
 
 
 const concat = (stream: PassThrough, callback: (err: Error, body: string) => void) => {
@@ -462,4 +463,8 @@ describe('m3u8stream', () => {
       }, /parser '\w+' not supported/);
     });
   });
+
+  describe('Exposes parse-time', () => {
+    assert.equals(m3u8stream.parseHumanTime, humanStr)
+  })
 });

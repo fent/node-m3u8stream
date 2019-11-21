@@ -49,6 +49,13 @@ If called, stops requesting segments, and refreshing the playlist.
 
 For static non-live playlists, emitted each time a segment has finished downloading. Since total download size is unknown until all segment endpoints are hit, progress is calculated based on how many segments are available.
 
+### m3u8stream.parseHumanTime(time)
+Converts human friendly time to milliseconds. Supports the format  
+00:00:00.000 for hours, minutes, seconds, and milliseconds respectively.  
+And 0ms, 0s, 0m, 0h, and together 1m1s.
+
+* `time` - A string (or number) giving the user-readable input data
+
 ### Limitations
 
 Currently, it does not support [encrypted media segments](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20#section-4.3.2.4). This is because the sites where this was tested on and intended for, YouTube and Twitch, don't use it.

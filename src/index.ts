@@ -208,3 +208,4 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
 };
 
 export = m3u8stream;
+m3u8stream.parseHumanTime = humanStr;

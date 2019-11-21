@@ -30,6 +30,12 @@ namespace m3u8stream {
     on(event: 'progress', progress: Progress, totalSegments: number, downloadedBytes: number): this;
     on(event: string | symbol, listener: (...args: any) => void): this;
   }
+
+
+  export interface m3u8stream {
+    (playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream;
+    parseHumanTime(time: number | string): number;
+  }
 }
 
 interface TimedItem extends Item {
@@ -41,7 +47,7 @@ const supportedParsers = {
   'dash-mpd': DashMPDParser,
 };
 
-let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream => {
+let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream => {
   const stream = new PassThrough() as m3u8stream.Stream;
   const chunkReadahead = options.chunkReadahead || 3;
   const liveBuffer = options.liveBuffer || 20000; // 20 seconds
@@ -205,7 +211,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
   };
 
   return stream;
-};
+}) as m3u8stream.m3u8stream;
+m3u8stream.parseHumanTime = humanStr;
 
 export = m3u8stream;
-export var parseHumanTime = humanStr;

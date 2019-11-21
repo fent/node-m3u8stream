@@ -465,6 +465,6 @@ describe('m3u8stream', () => {
   });
 
   describe('Exposes parse-time', () => {
-    assert.equals(m3u8stream.parseHumanTime, humanStr)
+    assert.equal(m3u8stream.parseHumanTime, humanStr)
   })
 });

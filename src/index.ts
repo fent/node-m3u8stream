@@ -33,7 +33,7 @@ namespace m3u8stream {
 
 
   export interface m3u8stream {
-    (playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream;
+    (playlistURL: string, options: Options = {}): Stream;
     parseHumanTime(time: number | string): number;
   }
 }

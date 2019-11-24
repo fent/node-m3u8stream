@@ -4,7 +4,7 @@ interface Task {
   callback: Callback;
 }
 
-export = class Queue {
+export default class Queue {
   _worker: (item: any, cb: Callback) => void;
   _concurrency: number;
   tasks: Task[];

@@ -5,7 +5,7 @@ import { Parser } from './parser';
 /**
  * A very simple m3u8 playlist file parser that detects tags and segments.
  */
-export = class m3u8Parser extends Writable implements Parser {
+export default class m3u8Parser extends Writable implements Parser {
   private _lastLine: string;
   private _seq: number;
   private _nextItemDuration: number | null;

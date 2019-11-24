@@ -7,7 +7,7 @@ import { Parser } from './parser';
 /**
  * A wrapper around sax that emits segments.
  */
-export = class DashMPDParser extends Writable implements Parser {
+export default class DashMPDParser extends Writable implements Parser {
   private _parser: Writable;
 
   constructor(targetID?: string) {

@@ -32,7 +32,7 @@
   "devDependencies": {
     "@types/lolex": "^3.1.1",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^12.7.2",
+    "@types/node": "^13.1.0",
     "@types/sax": "^1.0.1",
     "lolex": "^5.0.0",
     "mocha": "^6.2.0",

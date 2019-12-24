@@ -97,7 +97,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
   let refreshThreshold: number;
   let minRefreshTime: number;
   let refreshTimeout: NodeJS.Timer;
-  let fetchingPlaylist = false;
+  let fetchingPlaylist = true;
   let ended = false;
   let isStatic = false;
   let lastRefresh: number;
@@ -107,8 +107,9 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     if (err) {
       onError(err);
     } else if (!fetchingPlaylist && !ended && !isStatic &&
-      requestQueue.tasks.length + requestQueue.active === refreshThreshold) {
+      requestQueue.tasks.length + requestQueue.active <= refreshThreshold) {
       let ms = Math.max(0, minRefreshTime - (Date.now() - lastRefresh));
+      fetchingPlaylist = true;
       refreshTimeout = setTimeout(refreshPlaylist, ms);
     } else if ((ended || isStatic) &&
       !requestQueue.tasks.length && !requestQueue.active) {
@@ -121,7 +122,6 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
   let starttime = 0;
 
   const refreshPlaylist = (): void => {
-    fetchingPlaylist = true;
     lastRefresh = Date.now();
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);

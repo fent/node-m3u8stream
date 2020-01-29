@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@types/lolex": "^3.1.1",
-    "@types/mocha": "^7.0.0",
+    "@types/mocha": "^7.0.1",
     "@types/node": "^13.1.0",
     "@types/sax": "^1.0.1",
     "lolex": "^5.0.0",

@@ -39,7 +39,8 @@ export default class DashMPDParser extends Writable implements Parser {
       switch (node.name) {
         case 'mpd':
           currtime =
-            new Date(node.attributes.availabilitystarttime).getTime();
+            node.attributes.availabilitystarttime ?
+              new Date(node.attributes.availabilitystarttime).getTime() : 0;
           isStatic = node.attributes.type !== 'dynamic';
           break;
         case 'period':
@@ -175,4 +176,4 @@ export default class DashMPDParser extends Writable implements Parser {
     this._parser.write(chunk, encoding);
     callback();
   }
-};
+}

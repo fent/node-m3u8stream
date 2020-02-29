@@ -56,7 +56,6 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
       humanStr(options.begin) :
       Math.max(options.begin - liveBuffer, 0);
   }
-  let liveBegin = Date.now() - liveBuffer;
 
   let currSegment: miniget.Stream | null;
   const streamQueue = new Queue((req, callback): void => {
@@ -137,24 +136,19 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
 
     let addedItems: any[] = [];
-    let liveAddedItems: any[] = [];
-    const addItem = (item: TimedItem, isLive: boolean): void => {
+    const addItem = (item: TimedItem): void => {
       if (item.seq <= lastSeq) { return; }
       lastSeq = item.seq;
       begin = item.time;
       requestQueue.push(item, onQueuedEnd);
       addedItems.push(item);
-      if (isLive) {
-        liveAddedItems.push(item);
-      }
     };
 
     let tailedItems: TimedItem[] = [], tailedItemsDuration = 0;
     parser.on('item', (item: Item) => {
-      let timedItem = { time: starttime, ...item};
-      let isLive = liveBegin <= timedItem.time;
+      let timedItem = { time: starttime, ...item };
       if (begin <= timedItem.time) {
-        addItem(timedItem, isLive);
+        addItem(timedItem);
       } else {
         tailedItems.push(timedItem);
         tailedItemsDuration += timedItem.duration;
@@ -172,7 +166,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
       // If we are too ahead of the stream, make sure to get the
       // latest available items with a small buffer.
       if (!addedItems.length && tailedItems.length) {
-        tailedItems.forEach((item) => { addItem(item, true); });
+        tailedItems.forEach((item) => { addItem(item); });
       }
 
       // Refresh the playlist when remaining segments get low.

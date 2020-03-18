@@ -15,7 +15,7 @@
     "type": "git",
     "url": "git://github.com/fent/node-m3u8stream.git"
   },
-  "author": "fent (https://github.com/fent)",
+  "author": "fent <fentbox@gmail.com> (https://github.com/fent)",
   "main": "./dist/index.js",
   "files": [
     "dist"

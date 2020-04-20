@@ -20,7 +20,11 @@ export default class DashMPDParser extends Writable implements Parser {
     let seq = 0;
     let segmentTemplate: { initialization?: string; media: string };
     let timescale: number, offset: number, duration: number, baseURL: string[];
-    let timeline: number[][] = [];
+    let timeline: {
+      duration: number;
+      repeat: number;
+      time: number;
+    }[] = [];
     let getSegments = false;
     let gotSegments = false;
     let isStatic: boolean;
@@ -70,10 +74,11 @@ export default class DashMPDParser extends Writable implements Parser {
           lastTag = node.name;
           break;
         case 's':
-          timeline.push([
-            parseInt(node.attributes.d),
-            parseInt(node.attributes.r)
-          ]);
+          timeline.push({
+            duration: parseInt(node.attributes.d),
+            repeat: parseInt(node.attributes.r),
+            time: parseInt(node.attributes.t),
+          });
           break;
         case 'adaptationset':
         case 'representation':
@@ -105,7 +110,7 @@ export default class DashMPDParser extends Writable implements Parser {
           if (getSegments) {
             gotSegments = true;
             let tl = timeline.shift();
-            let segmentDuration = (tl && tl[0] || duration) / timescale * 1000;
+            let segmentDuration = (tl && tl.duration || duration) / timescale * 1000;
             this.emit('item', {
               url: baseURL.filter(s => !!s).join('') + node.attributes.media,
               seq: seq++,
@@ -141,9 +146,10 @@ export default class DashMPDParser extends Writable implements Parser {
                 duration: 0,
               });
             }
-            for (let [duration, repeat] of timeline) {
+            for (let { duration, repeat, time } of timeline) {
               duration = duration / timescale * 1000;
               repeat = repeat || 1;
+              currtime = time || currtime;
               for (let i = 0; i < repeat; i++) {
                 this.emit('item', {
                   url: baseURL.filter(s => !!s).join('') +

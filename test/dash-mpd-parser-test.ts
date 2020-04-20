@@ -195,7 +195,7 @@ describe('dash MPD parser', () => {
     });
   });
 
-  describe('Playlist with segmentTemplate', () => {
+  describe('Playlist with <segmentTemplate>', () => {
     it('Segments are generated and emitted', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/segment-template.mpd');
       let items: Item[] = [];
@@ -272,6 +272,43 @@ describe('dash MPD parser', () => {
               duration: 2000 / timescale * 1000, seq: 2 },
             { url: 'audio/und/seg-3.m4f',
               duration: 2000 / timescale * 1000, seq: 3 },
+          ]);
+          done();
+        });
+      });
+    });
+
+    describe('Contains <SegmentTemplate> inside <Representation>', () => {
+      it('Segments are emitted', (done) => {
+        let filepath = path.resolve(__dirname, 'playlists/facebook.mpd');
+        const parser = new DashMPDParser();
+        let items: Item[] = [];
+        parser.on('item', item => items.push(item));
+        parser.on('error', done);
+        fs.createReadStream(filepath).pipe(parser).on('end', () => {
+          assert.deepEqual(items, [
+            { url: '../live-md-v/122643152223588_0-init.m4v',
+              duration: 0, seq: 0 },
+            { url: '../live-md-v/122643152223588_0-1553658495000.m4v',
+              duration: 2000, seq: 1 },
+            { url: '../live-md-v/122643152223588_0-1553658497000.m4v',
+              duration: 2000, seq: 2 },
+            { url: '../live-md-v/122643152223588_0-1553658499000.m4v',
+              duration: 2000, seq: 3 },
+            { url: '../live-md-v/122643152223588_0-1553658501000.m4v',
+              duration: 2000, seq: 4 },
+            { url: '../live-md-v/122643152223588_0-1553658503000.m4v',
+              duration: 2000, seq: 5 },
+            { url: '../live-md-v/122643152223588_0-1553658505000.m4v',
+              duration: 2000, seq: 6 },
+            { url: '../live-md-v/122643152223588_0-1553658507000.m4v',
+              duration: 2000, seq: 7 },
+            { url: '../live-md-v/122643152223588_0-1553658509000.m4v',
+              duration: 2000, seq: 8 },
+            { url: '../live-md-v/122643152223588_0-1553658511000.m4v',
+              duration: 2000, seq: 9 },
+            { url: '../live-md-v/122643152223588_0-1553658513000.m4v',
+              duration: 2000, seq: 10 },
           ]);
           done();
         });

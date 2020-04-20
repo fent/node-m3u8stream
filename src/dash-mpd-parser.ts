@@ -22,6 +22,7 @@ export default class DashMPDParser extends Writable implements Parser {
     let timescale: number, offset: number, duration: number, baseURL: string[];
     let timeline: number[][] = [];
     let getSegments = false;
+    let gotSegments = false;
     let isStatic: boolean;
     let treeLevel: number;
     let periodStart: number;
@@ -90,29 +91,6 @@ export default class DashMPDParser extends Writable implements Parser {
             }
             this.emit('starttime', currtime);
           }
-          if (getSegments && segmentTemplate && timeline.length) {
-            if (segmentTemplate.initialization) {
-              this.emit('item', {
-                url: baseURL.filter(s => !!s).join('') +
-                  tmpl(segmentTemplate.initialization),
-                seq: seq - 1,
-                duration: 0,
-              });
-            }
-            for (let [duration, repeat] of timeline) {
-              duration = duration / timescale * 1000;
-              repeat = repeat || 1;
-              for (let i = 0; i < repeat; i++) {
-                this.emit('item', {
-                  url: baseURL.filter(s => !!s).join('') +
-                    tmpl(segmentTemplate.media),
-                  seq: seq++,
-                  duration,
-                });
-                currtime += duration;
-              }
-            }
-          }
           break;
         case 'initialization':
           if (getSegments) {
@@ -125,6 +103,7 @@ export default class DashMPDParser extends Writable implements Parser {
           break;
         case 'segmenturl':
           if (getSegments) {
+            gotSegments = true;
             let tl = timeline.shift();
             let segmentDuration = (tl && tl[0] || duration) / timescale * 1000;
             this.emit('item', {
@@ -151,12 +130,36 @@ export default class DashMPDParser extends Writable implements Parser {
         case 'adaptationset':
         case 'representation':
           treeLevel--;
-          break;
-        case 'segmentlist':
-          if (getSegments) {
+          if (segmentTemplate && timeline.length) {
+            gotSegments = true;
+            if (segmentTemplate.initialization) {
+              seq = Math.max(0, seq - 1);
+              this.emit('item', {
+                url: baseURL.filter(s => !!s).join('') +
+                tmpl(segmentTemplate.initialization),
+                seq: seq++,
+                duration: 0,
+              });
+            }
+            for (let [duration, repeat] of timeline) {
+              duration = duration / timescale * 1000;
+              repeat = repeat || 1;
+              for (let i = 0; i < repeat; i++) {
+                this.emit('item', {
+                  url: baseURL.filter(s => !!s).join('') +
+                  tmpl(segmentTemplate.media),
+                  seq: seq++,
+                  duration,
+                });
+                currtime += duration;
+              }
+            }
+          }
+          if (gotSegments) {
             this.emit('endearly');
             onEnd();
             this._parser.removeAllListeners();
+            this.removeAllListeners('finish');
           }
           break;
       }

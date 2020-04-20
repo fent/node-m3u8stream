@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+
+<MPD
+  type="dynamic"
+  xmlns="urn:mpeg:dash:schema:mpd:2011"
+  xmlns:xsi="http://www.w3.org/2011/XMLSchema-instance"
+  xsi:schemaLocation="urn:mpeg:DASH:schema:MPD:2011 DASH-MPD.xsd"
+  profiles="urn:mpeg:dash:profile:isoff-live:2011"
+  availabilityStartTime="2019-03-26T20:48:15-07:00"
+  availabilityEndTime="2019-03-26T20:57:13-07:00"
+  timeShiftBufferDepth="PT20S"
+  suggestedPresentationDelay="PT2S"
+  minBufferTime="PT1S"
+  publishTime="2019-03-26T20:48:15-07:00"
+  minimumUpdatePeriod="PT1S"
+  currentServerTimeMs="1553658553228"
+  fblsVersion="sve.live_streaming:24ed37e"
+  firstAvTimeMs="895"
+  lastVideoFrameTs="58607"
+  loapStreamId="122643152223588"
+  publishFrameTime="895">
+  <Period id="dash-abr1" start="PT0S">
+    <AdaptationSet
+      segmentAlignment="true"
+      maxWidth="640"
+      maxHeight="360"
+      maxFrameRate="30">
+      <Representation
+        id="live-md-v"
+        mimeType="video/mp4"
+        codecs="avc1.4d401e"
+        width="640"
+        height="360"
+        frameRate="30"
+        startWithSAP="1"
+        bandwidth="299432"
+        FBQualityClass="sd"
+        FBQualityLabel="360p">
+        <SegmentTemplate
+          presentationTimeOffset="0"
+          timescale="1000"
+          initialization="../live-md-v/122643152223588_0-init.m4v"
+          media="../live-md-v/122643152223588_0-$Time$.m4v">
+          <SegmentTimeline>
+            <S t="36874" d="2000"/>
+            <S t="38874" d="2000"/>
+            <S t="40874" d="2000"/>
+            <S t="42874" d="2000"/>
+            <S t="44874" d="2000"/>
+            <S t="46874" d="2000"/>
+            <S t="48874" d="2000"/>
+            <S t="50874" d="2000"/>
+            <S t="52874" d="2000"/>
+            <S t="54874" d="2000"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+      <Representation
+        id="live-ld-v"
+        mimeType="video/mp4"
+        codecs="avc1.4d401e"
+        width="426"
+        height="240"
+        frameRate="30"
+        startWithSAP="1"
+        bandwidth="107457"
+        FBQualityClass="sd"
+        FBQualityLabel="240p">
+        <SegmentTemplate
+          presentationTimeOffset="0"
+          timescale="1000"
+          initialization="../live-ld-v/122643152223588_0-init.m4v"
+          media="../live-ld-v/122643152223588_0-$Time$.m4v">
+          <SegmentTimeline>
+            <S t="36874" d="2000"/>
+            <S t="38874" d="2000"/>
+            <S t="40874" d="2000"/>
+            <S t="42874" d="2000"/>
+            <S t="44874" d="2000"/>
+            <S t="46874" d="2000"/>
+            <S t="48874" d="2000"/>
+            <S t="50874" d="2000"/>
+            <S t="52874" d="2000"/>
+            <S t="54874" d="2000"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet segmentAlignment="true">
+      <Representation
+        id="live-md-a"
+        mimeType="audio/mp4"
+        codecs="mp4a.40.2"
+        audioSamplingRate="48000"
+        startWithSAP="1"
+        bandwidth="63897">
+        <SegmentTemplate
+          presentationTimeOffset="0"
+          timescale="1000"
+          initialization="../live-md-a/122643152223588_0-init.m4a"
+          media="../live-md-a/122643152223588_0-$Time$.m4a">
+          <SegmentTimeline>
+            <S t="36874" d="2000"/>
+            <S t="38874" d="2000"/>
+            <S t="40874" d="2000"/>
+            <S t="42874" d="2000"/>
+            <S t="44874" d="2000"/>
+            <S t="46874" d="2000"/>
+            <S t="48874" d="2000"/>
+            <S t="50874" d="2000"/>
+            <S t="52874" d="2000"/>
+            <S t="54874" d="2000"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

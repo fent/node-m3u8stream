@@ -57,4 +57,56 @@ describe('m3u8 parser', () => {
       });
     });
   });
+
+  describe('Plalist contains `EXT-X-MAP`', () => {
+    it('Emits initialization segment', (done) => {
+      let filepath = path.resolve(__dirname, 'playlists/x-map-1.m3u8');
+      let items: Item[] = [];
+      let endlist = false;
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => { items.push(item); });
+      parser.on('endlist', () => { endlist = true; });
+      parser.on('error', done);
+      let rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          { url: 'init.mp4',
+            seq: 0, duration: 0 },
+          { url: 'main1.mp4',
+            seq: 1, duration: 4969 },
+          { url: 'main2.mp4',
+            seq: 2, duration: 4969 },
+          { url: 'main3.mp4',
+            seq: 3, duration: 4969 },
+          { url: 'main4.mp4',
+            seq: 4, duration: 4969 },
+        ]);
+        done();
+      });
+    });
+
+    describe('Without `URI`', () => {
+      it('Emits error', (done) => {
+        let filepath = path.resolve(__dirname, 'playlists/x-map-2.m3u8');
+        let items: Item[] = [];
+        let endlist = false;
+        const parser = new m3u8Parser();
+        parser.on('item', (item) => { items.push(item); });
+        parser.on('endlist', () => { endlist = true; });
+        parser.on('error', (err) => {
+          assert.ok(!endlist);
+          assert.equal(items.length, 0);
+          assert.ok(err);
+          done();
+        });
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          done(new Error('should not emit end'));
+        });
+      });
+    });
+  });
 });

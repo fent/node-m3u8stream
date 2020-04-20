@@ -34,6 +34,21 @@ export default class m3u8Parser extends Writable implements Parser {
         case 'EXT-X-MEDIA-SEQUENCE':
           this._seq = parseInt(value);
           break;
+        case 'EXT-X-MAP': {
+          let uriMatch = line.match(/URI="([^"]+)"/);
+          if (!uriMatch) {
+            this.emit('error',
+              new Error('`EXT-X-MAP` found without required attribute `URI`'));
+            return;
+          }
+          this._seq = Math.max(0, this._seq - 1);
+          this.emit('item', {
+            url: uriMatch[1],
+            seq: this._seq++,
+            duration: 0,
+          });
+          break;
+        }
         case 'EXTINF':
           this._nextItemDuration =
             Math.round(parseFloat(value.split(',')[0]) * 1000);

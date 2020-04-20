@@ -1,0 +1,16 @@
+#EXTM3U
+#EXT-X-TARGETDURATION:5
+#EXT-X-VERSION:7
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-KEY:METHOD=AES-128,URI="./slow_loading.php?delay=5&resource=crypt0.key",IV=0xbf9840dc7d7fa163301a6c38844d6239
+#EXT-X-MAP:URI="init.mp4"
+#EXTINF:4.96907,    
+main1.mp4
+#EXTINF:4.96907,    
+main2.mp4
+#EXTINF:4.96907,    
+main3.mp4
+#EXTINF:4.96907,    
+main4.mp4
+#EXT-X-ENDLIST

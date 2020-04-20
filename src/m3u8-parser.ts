@@ -37,7 +37,7 @@ export default class m3u8Parser extends Writable implements Parser {
         case 'EXT-X-MAP': {
           let uriMatch = line.match(/URI="([^"]+)"/);
           if (!uriMatch) {
-            this.emit('error',
+            this.destroy(
               new Error('`EXT-X-MAP` found without required attribute `URI`'));
             return;
           }
@@ -72,6 +72,7 @@ export default class m3u8Parser extends Writable implements Parser {
     let lines: string[] = chunk.toString('utf8').split('\n');
     if (this._lastLine) { lines[0] = this._lastLine + lines[0]; }
     lines.forEach((line: string, i: number) => {
+      if (this.destroyed) return;
       if (i < lines.length - 1) {
         this._parseLine(line);
       } else {

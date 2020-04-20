@@ -13,7 +13,7 @@ export default class DashMPDParser extends Writable implements Parser {
   constructor(targetID?: string) {
     super();
     this._parser = sax.createStream(false, { lowercase: true });
-    this._parser.on('error', this.emit.bind(this, 'error'));
+    this._parser.on('error', this.destroy.bind(this));
 
     let lastTag: string | null;
     let currtime = 0;
@@ -125,9 +125,10 @@ export default class DashMPDParser extends Writable implements Parser {
     const onEnd = (): void => {
       if (isStatic) { this.emit('endlist'); }
       if (!getSegments) {
-        this.emit('error', Error(`Representation '${targetID}' not found`));
+        this.destroy(Error(`Representation '${targetID}' not found`));
+      } else {
+        this.emit('end');
       }
-      this.emit('end');
     };
 
     this._parser.on('closetag', (tagName) => {

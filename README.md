@@ -26,7 +26,7 @@ m3u8stream('http://somesite.com/link/to/the/playlist.m3u8')
 
 Creates a readable stream of binary media data. `options` can have the following
 
-* `begin` - Where to begin playing the video. Accepts an absolute unix timestamp or datej and a relative time in the formats `1:23:45.123` and `1m2s`.
+* `begin` - Where to begin playing the video. Accepts an absolute unix timestamp or date and a relative time in the formats `1:23:45.123` and `1m2s`.
 * `liveBuffer` - How much buffer in milliseconds to have for live streams. Default is `20000`.
 * `chunkReadahead` - How many chunks to preload ahead. Default is `3`.
 * `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.

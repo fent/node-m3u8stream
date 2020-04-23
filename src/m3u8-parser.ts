@@ -9,12 +9,16 @@ export default class m3u8Parser extends Writable implements Parser {
   private _lastLine: string;
   private _seq: number;
   private _nextItemDuration: number | null;
+  private _nextItemRange: { start: number; end: number } | null;
+  private _lastItemRangeEnd: number;
 
   constructor() {
     super();
     this._lastLine = '';
     this._seq = 0;
     this._nextItemDuration = null;
+    this._nextItemRange = null;
+    this._lastItemRangeEnd = 0;
     this.on('finish', () => {
       this._parseLine(this._lastLine);
       this.emit('end');
@@ -41,12 +45,29 @@ export default class m3u8Parser extends Writable implements Parser {
               new Error('`EXT-X-MAP` found without required attribute `URI`'));
             return;
           }
+          let byteRange = line.match(/BYTERANGE="(\d+)(?:@(\d+))?"/);
+          let range = null;
+          if (byteRange) {
+            let start = byteRange[2] ? parseInt(byteRange[2]) : this._lastItemRangeEnd + 1;
+            let end = start + parseInt(byteRange[1]) - 1;
+            range = { start, end };
+            this._lastItemRangeEnd = range.end;
+          }
           this.emit('item', {
             url: uriMatch[1],
             seq: this._seq,
             init: true,
             duration: 0,
+            range,
           });
+          break;
+        }
+        case 'EXT-X-BYTERANGE': {
+          let range = value.split('@');
+          let start = range[1] ? parseInt(range[1]) : this._lastItemRangeEnd + 1;
+          let end = start + parseInt(range[0]) - 1;
+          this._nextItemRange = { start, end };
+          this._lastItemRangeEnd = this._nextItemRange.end;
           break;
         }
         case 'EXTINF':
@@ -64,7 +85,9 @@ export default class m3u8Parser extends Writable implements Parser {
         url: line.trim(),
         seq: this._seq++,
         duration: this._nextItemDuration,
+        range: this._nextItemRange,
       });
+      this._nextItemRange = null;
     }
   }
 

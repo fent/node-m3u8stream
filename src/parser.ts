@@ -5,6 +5,7 @@ export interface Item {
   seq: number;
   duration: number;
   time?: number;
+  range?: { start: number; end: number };
   init?: boolean;
 }
 

@@ -71,7 +71,13 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
   let segmentNumber = 0;
   let downloaded = 0;
   const requestQueue = new Queue((segment: Item, callback: () => void): void => {
-    let req = miniget(urlResolve(playlistURL, segment.url), requestOptions);
+    let options = Object.assign({}, requestOptions);
+    if (segment.range) {
+      options.headers = Object.assign({}, options.headers, {
+        Range: `bytes=${segment.range.start}-${segment.range.end}`,
+      });
+    }
+    let req = miniget(urlResolve(playlistURL, segment.url), options);
     req.on('error', callback);
     streamQueue.push(req, (err, size) => {
       downloaded += +size;

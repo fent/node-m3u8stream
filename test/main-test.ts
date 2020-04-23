@@ -1,5 +1,6 @@
 import m3u8stream from '../dist/index';
 import path from 'path';
+import fs from 'fs';
 import assert from 'assert';
 import nock from 'nock';
 import { PassThrough } from 'stream';
@@ -447,6 +448,50 @@ describe('m3u8stream', () => {
           '09',
           '10'
         ].join(''));
+        done();
+      });
+    });
+  });
+
+  describe('m3u8 playlist with ranges', () => {
+    it('Makes ranged requests', (done) => {
+      let filename = path.resolve(__dirname, 'playlists/main.mp4');
+      const replyWithRange = function(this: nock.ReplyFnContext) {
+        const range = this.req.headers.range;
+        assert.ok(range);
+        const rangeMatch = range.match(/bytes=(\d+)-(\d+)/);
+        return fs.createReadStream(filename, {
+          start: parseInt(rangeMatch[1]), end: parseInt(rangeMatch[2]),
+        });
+      };
+      let scope = nock('https://somethingsomething.fyi')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/x-byterange-1.m3u8'))
+        .get('/main.mp4').reply(200, replyWithRange)
+        .get('/main.mp4').reply(200, replyWithRange)
+        .get('/main.mp4').reply(200, replyWithRange)
+        .get('/main.mp4').reply(200, replyWithRange)
+        .get('/main.mp4').reply(200, replyWithRange);
+      let stream = m3u8stream('https://somethingsomething.fyi/playlist.m3u8');
+      let segments: m3u8stream.Progress[] = [];
+      stream.on('progress', (segment) => segments.push(segment));
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.deepEqual(segments, [
+          { url: 'main.mp4',
+            num: 1, size: 50, duration: 0 },
+          { url: 'main.mp4',
+            num: 2, size: 75, duration: 4969 },
+          { url: 'main.mp4',
+            num: 3, size: 70, duration: 4969 },
+          { url: 'main.mp4',
+            num: 4, size: 70, duration: 4969 },
+          { url: 'main.mp4',
+            num: 5, size: 80, duration: 4969 },
+        ]);
+        assert.equal(body, fs.readFileSync(filename, 'utf8'));
         done();
       });
     });

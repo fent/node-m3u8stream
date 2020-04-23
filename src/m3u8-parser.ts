@@ -41,10 +41,10 @@ export default class m3u8Parser extends Writable implements Parser {
               new Error('`EXT-X-MAP` found without required attribute `URI`'));
             return;
           }
-          this._seq = Math.max(0, this._seq - 1);
           this.emit('item', {
             url: uriMatch[1],
-            seq: this._seq++,
+            seq: this._seq,
+            init: true,
             duration: 0,
           });
           break;

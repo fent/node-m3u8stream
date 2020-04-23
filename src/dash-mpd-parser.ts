@@ -101,7 +101,8 @@ export default class DashMPDParser extends Writable implements Parser {
           if (getSegments) {
             this.emit('item', {
               url: baseURL.filter(s => !!s).join('') + node.attributes.sourceurl,
-              seq: seq++,
+              seq: seq,
+              init: true,
               duration: 0,
             });
           }
@@ -139,11 +140,11 @@ export default class DashMPDParser extends Writable implements Parser {
           if (segmentTemplate && timeline.length) {
             gotSegments = true;
             if (segmentTemplate.initialization) {
-              seq = Math.max(0, seq - 1);
               this.emit('item', {
                 url: baseURL.filter(s => !!s).join('') +
                 tmpl(segmentTemplate.initialization),
-                seq: seq++,
+                seq: seq,
+                init: true,
                 duration: 0,
               });
             }

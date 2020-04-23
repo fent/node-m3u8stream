@@ -72,8 +72,8 @@ describe('m3u8 parser', () => {
       rs.on('end', () => {
         assert.ok(endlist);
         assert.deepEqual(items, [
-          { url: 'init.mp4',
-            seq: 0, duration: 0 },
+          { url: 'init.mp4', init: true,
+            seq: 1, duration: 0 },
           { url: 'main1.mp4',
             seq: 1, duration: 4969 },
           { url: 'main2.mp4',
@@ -105,6 +105,38 @@ describe('m3u8 parser', () => {
         rs.pipe(parser);
         rs.on('end', () => {
           done(new Error('should not emit end'));
+        });
+      });
+    });
+
+    describe('Twice in one playlist', () => {
+      it('Emits initialization segment', (done) => {
+        let filepath = path.resolve(__dirname, 'playlists/x-map-3.m3u8');
+        let items: Item[] = [];
+        let endlist = false;
+        const parser = new m3u8Parser();
+        parser.on('item', (item) => { items.push(item); });
+        parser.on('endlist', () => { endlist = true; });
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.ok(endlist);
+          assert.deepEqual(items, [
+            { url: 'main.mp4', init: true,
+              seq: 1, duration: 0 },
+            { url: 'main.mp4',
+              seq: 1, duration: 4969 },
+            { url: 'main.mp4',
+              seq: 2, duration: 4969 },
+            { url: 'main.mp4', init: true,
+              seq: 3, duration: 0 },
+            { url: 'main.mp4',
+              seq: 3, duration: 4969 },
+            { url: 'main.mp4',
+              seq: 4, duration: 4969 },
+          ]);
+          done();
         });
       });
     });

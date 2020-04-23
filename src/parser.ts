@@ -5,6 +5,7 @@ export interface Item {
   seq: number;
   duration: number;
   time?: number;
+  init?: boolean;
 }
 
 export interface Parser extends Writable {

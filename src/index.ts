@@ -137,8 +137,10 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
 
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
-      if (item.seq <= lastSeq) { return; }
-      lastSeq = item.seq;
+      if (!item.init) {
+        if (item.seq <= lastSeq) { return; }
+        lastSeq = item.seq;
+      }
       begin = item.time;
       requestQueue.push(item, onQueuedEnd);
       addedItems.push(item);

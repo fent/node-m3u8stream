@@ -25,6 +25,26 @@ export default class m3u8Parser extends Writable implements Parser {
     });
   }
 
+  _parseAttrList(value: string) {
+    let attrs: { [key: string]: string } = {};
+    let regex = /([A-Z0-9-]+)=(?:"([^"]*?)"|([^,]*?))/g;
+    let match;
+    while ((match = regex.exec(value)) != null) {
+      attrs[match[1]] = match[2] || match[3];
+    }
+    return attrs;
+  }
+
+  _parseRange(value: string) {
+    if (!value) return null;
+    let svalue = value.split('@');
+    let start = svalue[1] ? parseInt(svalue[1]) : this._lastItemRangeEnd + 1;
+    let end = start + parseInt(svalue[0]) - 1;
+    let range = { start, end };
+    this._lastItemRangeEnd = range.end;
+    return range;
+  }
+
   _parseLine(line: string): void {
     let match = line.match(/^#(EXT[A-Z0-9-]+)(?::(.*))?/);
     if (match) {
@@ -39,35 +59,23 @@ export default class m3u8Parser extends Writable implements Parser {
           this._seq = parseInt(value);
           break;
         case 'EXT-X-MAP': {
-          let uriMatch = line.match(/URI="([^"]+)"/);
-          if (!uriMatch) {
+          let attrs = this._parseAttrList(value);
+          if (!attrs.URI) {
             this.destroy(
               new Error('`EXT-X-MAP` found without required attribute `URI`'));
             return;
           }
-          let byteRange = line.match(/BYTERANGE="(\d+)(?:@(\d+))?"/);
-          let range = null;
-          if (byteRange) {
-            let start = byteRange[2] ? parseInt(byteRange[2]) : this._lastItemRangeEnd + 1;
-            let end = start + parseInt(byteRange[1]) - 1;
-            range = { start, end };
-            this._lastItemRangeEnd = range.end;
-          }
           this.emit('item', {
-            url: uriMatch[1],
+            url: attrs.URI,
             seq: this._seq,
             init: true,
             duration: 0,
-            range,
+            range: this._parseRange(attrs.BYTERANGE),
           });
           break;
         }
         case 'EXT-X-BYTERANGE': {
-          let range = value.split('@');
-          let start = range[1] ? parseInt(range[1]) : this._lastItemRangeEnd + 1;
-          let end = start + parseInt(range[0]) - 1;
-          this._nextItemRange = { start, end };
-          this._lastItemRangeEnd = this._nextItemRange.end;
+          this._nextItemRange = this._parseRange(value);
           break;
         }
         case 'EXTINF':

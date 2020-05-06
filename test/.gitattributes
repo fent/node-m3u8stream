@@ -1,0 +1,3 @@
+# mp4 files are binary and should not have line-endings changed
+# no matter the individual developer settings
+*.mp4 binary

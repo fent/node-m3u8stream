@@ -10,7 +10,7 @@
     "segments",
     "stream"
   ],
-  "version": "0.7.0",
+  "version": "0.7.1",
   "repository": {
     "type": "git",
     "url": "git://github.com/fent/node-m3u8stream.git"

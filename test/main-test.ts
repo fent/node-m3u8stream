@@ -146,10 +146,7 @@ describe('m3u8stream', () => {
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-2.1.m3u8'))
-        .get('/fileSequence2681.ts').reply(() => {
-          process.nextTick(passSomeTime);
-          return [200, 'apple'];
-        })
+        .get('/fileSequence2681.ts').reply(200, 'apple')
         .get('/fileSequence2682.ts').reply(200, 'banana')
         .get('/fileSequence2683.ts').reply(200, 'cherry')
         .get('/fileSequence2684.ts').reply(200, 'durango')
@@ -158,23 +155,20 @@ describe('m3u8stream', () => {
         .get('/fileSequence2687.ts').reply(200, 'grape')
         .get('/fileSequence2688.ts').reply(200, 'hackberry')
         .get('/fileSequence2689.ts').reply(200, 'imbe')
-        .get('/fileSequence2690.ts').reply(200, 'java');
-
-      const passSomeTime = () => {
-        scope.get('/playlist.m3u8')
-          .replyWithFile(200, path.resolve(__dirname,
-            'playlists/live-2.2.m3u8'))
-          .get('/fileSequence2691.ts').reply(200, 'kiwi')
-          .get('/fileSequence2692.ts').reply(200, 'lime')
-          .get('/fileSequence2693.ts').reply(200, 'melon')
-          .get('/fileSequence2694.ts').reply(200, 'nut')
-          .get('/fileSequence2695.ts').reply(200, 'orange')
-          .get('/fileSequence2696.ts').reply(200, 'pear')
-          .get('/fileSequence2697.ts').reply(200, 'melon')
-          .get('/fileSequence2698.ts').reply(200, 'quince')
-          .get('/fileSequence2699.ts').reply(200, 'raspberry')
-          .get('/fileSequence2700.ts').reply(200, 'strawberry');
-      };
+        .get('/fileSequence2690.ts').reply(200, 'java')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/live-2.2.m3u8'))
+        .get('/fileSequence2691.ts').reply(200, 'kiwi')
+        .get('/fileSequence2692.ts').reply(200, 'lime')
+        .get('/fileSequence2693.ts').reply(200, 'melon')
+        .get('/fileSequence2694.ts').reply(200, 'nut')
+        .get('/fileSequence2695.ts').reply(200, 'orange')
+        .get('/fileSequence2696.ts').reply(200, 'pear')
+        .get('/fileSequence2697.ts').reply(200, 'melon')
+        .get('/fileSequence2698.ts').reply(200, 'quince')
+        .get('/fileSequence2699.ts').reply(200, 'raspberry')
+        .get('/fileSequence2700.ts').reply(200, 'strawberry');
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
       concat(stream, (err, body) => {
@@ -227,16 +221,11 @@ describe('m3u8stream', () => {
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname,
           'playlists/live-1.1.m3u8'))
-        .get('/fileSequence2681.ts').reply(() => {
-          process.nextTick(() => {
-            scope
-              .get('/playlist.m3u8')
-              .replyWithError('uh oh');
-          });
-          return [200, 'one'];
-        })
+        .get('/fileSequence2681.ts').reply(200, 'one')
         .get('/fileSequence2682.ts').reply(200, 'two')
-        .get('/fileSequence2683.ts').reply(200, 'three');
+        .get('/fileSequence2683.ts').reply(200, 'three')
+        .get('/playlist.m3u8')
+        .replyWithError('uh oh');
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
         requestOptions: { maxRetries: 0 } });
@@ -310,23 +299,17 @@ describe('m3u8stream', () => {
             .get('/playlist.m3u8')
             .replyWithFile(200, path.resolve(__dirname,
               'playlists/youtube-live-1.1.m3u8'))
-            .get('/fileSequence0005.ts').reply(() => {
-              process.nextTick(passSomeTime);
-              return [200, '05'];
-            })
+            .get('/fileSequence0005.ts').reply(200, '05')
             .get('/fileSequence0006.ts').reply(200, '06')
             .get('/fileSequence0007.ts').reply(200, '07')
-            .get('/fileSequence0008.ts').reply(200, '08');
-
-          const passSomeTime = () => {
-            scope.get('/playlist.m3u8')
-              .replyWithFile(200, path.resolve(__dirname,
-                'playlists/youtube-live-1.2.m3u8'))
-              .get('/fileSequence0009.ts').reply(200, '09')
-              .get('/fileSequence0010.ts').reply(200, '10')
-              .get('/fileSequence0011.ts').reply(200, '11')
-              .get('/fileSequence0012.ts').reply(200, '12');
-          };
+            .get('/fileSequence0008.ts').reply(200, '08')
+            .get('/playlist.m3u8')
+            .replyWithFile(200, path.resolve(__dirname,
+              'playlists/youtube-live-1.2.m3u8'))
+            .get('/fileSequence0009.ts').reply(200, '09')
+            .get('/fileSequence0010.ts').reply(200, '10')
+            .get('/fileSequence0011.ts').reply(200, '11')
+            .get('/fileSequence0012.ts').reply(200, '12');
 
           let stream = m3u8stream('https://yt.com/playlist.m3u8', {
             begin: Date.now()
@@ -355,25 +338,19 @@ describe('m3u8stream', () => {
             .get('/playlist.m3u8')
             .replyWithFile(200, path.resolve(__dirname,
               'playlists/youtube-live-1.1.m3u8'))
-            .get('/fileSequence0003.ts').reply(() => {
-              process.nextTick(passSomeTime);
-              return [200, '03'];
-            })
+            .get('/fileSequence0003.ts').reply(200, '03')
             .get('/fileSequence0004.ts').reply(200, '04')
             .get('/fileSequence0005.ts').reply(200, '05')
             .get('/fileSequence0006.ts').reply(200, '06')
             .get('/fileSequence0007.ts').reply(200, '07')
-            .get('/fileSequence0008.ts').reply(200, '08');
-
-          const passSomeTime = () => {
-            scope.get('/playlist.m3u8')
-              .replyWithFile(200, path.resolve(__dirname,
-                'playlists/youtube-live-1.2.m3u8'))
-              .get('/fileSequence0009.ts').reply(200, '09')
-              .get('/fileSequence0010.ts').reply(200, '10')
-              .get('/fileSequence0011.ts').reply(200, '11')
-              .get('/fileSequence0012.ts').reply(200, '12');
-          };
+            .get('/fileSequence0008.ts').reply(200, '08')
+            .get('/playlist.m3u8')
+            .replyWithFile(200, path.resolve(__dirname,
+              'playlists/youtube-live-1.2.m3u8'))
+            .get('/fileSequence0009.ts').reply(200, '09')
+            .get('/fileSequence0010.ts').reply(200, '10')
+            .get('/fileSequence0011.ts').reply(200, '11')
+            .get('/fileSequence0012.ts').reply(200, '12');
 
           let stream = m3u8stream('https://yt.com/playlist.m3u8', { begin: '10s' });
           concat(stream, (err, body) => {

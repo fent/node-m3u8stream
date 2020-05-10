@@ -271,6 +271,38 @@ describe('m3u8stream', () => {
       });
     });
 
+    it('Handles retrieving same live playlist twice', (done) => {
+      let scope = nock('https://priv.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/live-1.1.m3u8'))
+        .get('/fileSequence2681.ts').reply(200, 'apple')
+        .get('/fileSequence2682.ts').reply(200, 'banana')
+        .get('/fileSequence2683.ts').reply(200, 'cherry')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/live-1.1.m3u8'))
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname,
+          'playlists/live-1.2.m3u8'))
+        .get('/fileSequence2684.ts').reply(200, 'fig')
+        .get('/fileSequence2685.ts').reply(200, 'grape');
+
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, [
+          'apple',
+          'banana',
+          'cherry',
+          'fig',
+          'grape'
+        ].join(''));
+        done();
+      });
+    });
+
     describe('With dated segments', () => {
       describe('With `begin` set to now', () => {
         it('Starts stream on segment that matches `begin`', (done) => {

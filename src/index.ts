@@ -186,6 +186,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
         addedItems.reduce(((total, item) => item.duration + total), 0);
 
       fetchingPlaylist = false;
+      onQueuedEnd();
     });
   };
   refreshPlaylist();

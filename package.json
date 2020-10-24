@@ -31,14 +31,14 @@
     "sax": "^1.2.4"
   },
   "devDependencies": {
-    "@types/lolex": "^3.1.1",
     "@types/mocha": "^7.0.0",
     "@types/node": "^13.1.0",
     "@types/sax": "^1.0.1",
-    "lolex": "^6.0.0",
+    "@types/sinon": "^9.0.8",
     "mocha": "^7.0.1",
     "nock": "^12.0.0",
     "nyc": "^15.0.0",
+    "sinon": "^9.2.0",
     "ts-node": "^8.4.1",
     "typescript": "^3.4.2"
   },

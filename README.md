@@ -49,6 +49,10 @@ If called, stops requesting segments, and refreshing the playlist.
 
 For static non-live playlists, emitted each time a segment has finished downloading. Since total download size is unknown until all segment endpoints are hit, progress is calculated based on how many segments are available.
 
+#### miniget events
+
+All [miniget events](https://github.com/fent/node-miniget#event-redirect) are forwarded and can be listened to from the returned stream.
+
 ### Limitations
 
 Currently, it does not support [encrypted media segments](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20#section-4.3.2.4). This is because the sites where this was tested on and intended for, YouTube and Twitch, don't use it.

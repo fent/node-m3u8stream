@@ -2,8 +2,9 @@ import m3u8stream from '../dist/index';
 import path from 'path';
 import fs from 'fs';
 import assert from 'assert';
-import nock from 'nock';
 import { PassThrough } from 'stream';
+import nock from 'nock';
+import { spy } from 'sinon';
 
 
 const concat = (stream: PassThrough, callback: (err: Error, body: string) => void) => {
@@ -16,9 +17,7 @@ const concat = (stream: PassThrough, callback: (err: Error, body: string) => voi
 
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
-  before(() => { global.setTimeout = (fn, ms, ...args) => {
-    return setTimeout(fn, 0, ...args);
-  }; });
+  before(() => { global.setTimeout = (fn, ms, ...args) => setTimeout(fn, 0, ...args); });
   after(() => { global.setTimeout = setTimeout; });
 
   describe('Simple media playlist', () => {
@@ -91,6 +90,28 @@ describe('m3u8stream', () => {
             url: 'http://media.example.com/third.ts',
           }, 3, 11],
         ]);
+        done();
+      });
+
+    });
+
+    it('Forwards events from miniget', (done) => {
+      let scope = nock('http://media.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
+        .get('/first.ts').reply(200, '1')
+        .get('/second.ts').reply(200, '2')
+        .get('/third.ts').reply(200, '3');
+      let stream = m3u8stream('http://media.example.com/playlist.m3u8');
+      let reqSpy = spy();
+      let resSpy = spy();
+      stream.on('request', reqSpy);
+      stream.on('response', resSpy);
+      concat(stream, (err) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(reqSpy.callCount, 4);
+        assert.equal(resSpy.callCount, 4);
         done();
       });
     });
@@ -290,6 +311,7 @@ describe('m3u8stream', () => {
         ].join(''));
         done();
       });
+
     });
 
     describe('With dated segments', () => {

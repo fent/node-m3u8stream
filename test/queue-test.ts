@@ -1,12 +1,12 @@
 import Queue from '../dist/queue';
 import assert from 'assert';
-import lolex from 'lolex';
+import sinon from 'sinon';
 
 
 describe('Create a queue', () => {
   describe('With 3 concurrency', () => {
-    let clock: lolex.InstalledClock;
-    before(() => { clock = lolex.install(); });
+    let clock: sinon.SinonFakeTimers;
+    before(() => { clock = sinon.useFakeTimers(); });
     after(() => { clock.uninstall(); });
 
     it('Defaults to a set concurrency', (done) => {

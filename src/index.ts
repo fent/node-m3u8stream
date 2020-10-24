@@ -57,6 +57,12 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
       Math.max(options.begin - liveBuffer, 0);
   }
 
+  const forwardEvents = (req: miniget.Stream) => {
+    for (let event of ['abort', 'request', 'response', 'redirect', 'retry', 'reconnect']) {
+      req.on(event, stream.emit.bind(stream, event));
+    }
+  };
+
   let currSegment: miniget.Stream | null;
   const streamQueue = new Queue((req, callback): void => {
     currSegment = req;
@@ -79,6 +85,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     }
     let req = miniget(urlResolve(playlistURL, segment.url), options);
     req.on('error', callback);
+    forwardEvents(req);
     streamQueue.push(req, (err, size) => {
       downloaded += +size;
       stream.emit('progress', {
@@ -130,6 +137,7 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     lastRefresh = Date.now();
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);
+    forwardEvents(currPlaylist);
     const parser = currPlaylist.pipe(new Parser(options.id));
     parser.on('starttime', (a: number) => {
       if (starttime) { return; }

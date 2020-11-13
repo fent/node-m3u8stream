@@ -27,7 +27,7 @@
     "test:unit": "mocha -- --require ts-node/register test/*-test.ts"
   },
   "dependencies": {
-    "miniget": "^2.0.1",
+    "miniget": "^3.0.0",
     "sax": "^1.2.4"
   },
   "devDependencies": {

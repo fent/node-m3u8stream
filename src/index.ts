@@ -204,14 +204,8 @@ let m3u8stream = (playlistURL: string, options: m3u8stream.Options = {}): m3u8st
     streamQueue.die();
     requestQueue.die();
     clearTimeout(refreshTimeout);
-    if (currPlaylist) {
-      currPlaylist.unpipe();
-      currPlaylist.abort();
-    }
-    if (currSegment) {
-      currSegment.unpipe();
-      currSegment.abort();
-    }
+    currPlaylist?.destroy();
+    currSegment?.destroy();
     PassThrough.prototype.end.call(stream, null);
   };
 

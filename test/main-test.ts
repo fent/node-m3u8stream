@@ -7,6 +7,7 @@ import nock from 'nock';
 import { spy } from 'sinon';
 
 
+nock.disableNetConnect();
 const concat = (stream: PassThrough, callback: (err: Error, body: string) => void) => {
   let body = '';
   stream.setEncoding('utf8');

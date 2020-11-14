@@ -10,7 +10,7 @@
     "strictPropertyInitialization": false,
     "noImplicitThis": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
     "alwaysStrict": true,
     "esModuleInterop": true,
     "outDir": "spec"

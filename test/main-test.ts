@@ -5,6 +5,7 @@ import assert from 'assert';
 import { PassThrough } from 'stream';
 import nock from 'nock';
 import { spy } from 'sinon';
+import { humanStr } from '../dist/parse-time';
 
 
 nock.disableNetConnect();
@@ -538,5 +539,9 @@ describe('m3u8stream', () => {
         });
       }, /parser '\w+' not supported/);
     });
+  });
+
+  describe('Exposes parse-time', () => {
+    assert.equal(m3u8stream.parseHumanTime, humanStr);
   });
 });

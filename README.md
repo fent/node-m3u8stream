@@ -53,7 +53,7 @@ For static non-live playlists, emitted each time a segment has finished download
 
 All [miniget events](https://github.com/fent/node-miniget#event-redirect) are forwarded and can be listened to from the returned stream.
 
-### m3u8stream.parseHumanTime(time)
+### m3u8stream.parseTimestamp(time)
 
 Converts human friendly time to milliseconds. Supports the format  
 00:00:00.000 for hours, minutes, seconds, and milliseconds respectively.  

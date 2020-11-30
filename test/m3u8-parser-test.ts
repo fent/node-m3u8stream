@@ -1,18 +1,18 @@
-import m3u8Parser from'../dist/m3u8-parser';
+import m3u8Parser from '../dist/m3u8-parser';
 import { Item } from '../dist/parser';
-import fs from'fs';
-import path from'path';
-import assert from'assert';
+import fs from 'fs';
+import path from 'path';
+import assert from 'assert';
 
 
 describe('m3u8 parser', () => {
   describe('Parse segments from a simple playlist', () => {
-    it('Emits all segments', (done) => {
+    it('Emits all segments', done => {
       let filepath = path.resolve(__dirname, 'playlists/simple.m3u8');
       let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath, { highWaterMark: 16 });
@@ -33,12 +33,12 @@ describe('m3u8 parser', () => {
   });
 
   describe('Parse segments from a live playlist', () => {
-    it('Emits all segments', (done) => {
+    it('Emits all segments', done => {
       let filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');
       let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -59,12 +59,12 @@ describe('m3u8 parser', () => {
   });
 
   describe('Plalist contains `EXT-X-MAP`', () => {
-    it('Emits initialization segment', (done) => {
+    it('Emits initialization segment', done => {
       let filepath = path.resolve(__dirname, 'playlists/x-map-1.m3u8');
       let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -88,14 +88,14 @@ describe('m3u8 parser', () => {
     });
 
     describe('Without `URI`', () => {
-      it('Emits error', (done) => {
+      it('Emits error', done => {
         let filepath = path.resolve(__dirname, 'playlists/x-map-2.m3u8');
         let items: Item[] = [];
         let endlist = false;
         const parser = new m3u8Parser();
-        parser.on('item', (item) => { items.push(item); });
+        parser.on('item', item => { items.push(item); });
         parser.on('endlist', () => { endlist = true; });
-        parser.on('error', (err) => {
+        parser.on('error', err => {
           assert.ok(!endlist);
           assert.equal(items.length, 0);
           assert.ok(err);
@@ -110,12 +110,12 @@ describe('m3u8 parser', () => {
     });
 
     describe('Twice in one playlist', () => {
-      it('Emits initialization segment', (done) => {
+      it('Emits initialization segment', done => {
         let filepath = path.resolve(__dirname, 'playlists/x-map-3.m3u8');
         let items: Item[] = [];
         let endlist = false;
         const parser = new m3u8Parser();
-        parser.on('item', (item) => { items.push(item); });
+        parser.on('item', item => { items.push(item); });
         parser.on('endlist', () => { endlist = true; });
         parser.on('error', done);
         let rs = fs.createReadStream(filepath);
@@ -143,12 +143,12 @@ describe('m3u8 parser', () => {
   });
 
   describe('Playlist contains `EXT-X-BYTERANGE`', () => {
-    it('Emits items with range', (done) => {
+    it('Emits items with range', done => {
       let filepath = path.resolve(__dirname, 'playlists/x-byterange-1.m3u8');
       let items: Item[] = [];
       let endlist = false;
       const parser = new m3u8Parser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);

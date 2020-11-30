@@ -9,7 +9,7 @@ describe('Create a queue', () => {
     before(() => { clock = sinon.useFakeTimers(); });
     after(() => { clock.uninstall(); });
 
-    it('Defaults to a set concurrency', (done) => {
+    it('Defaults to a set concurrency', done => {
       let maxms: number;
       let lastTask: number;
       let q = new Queue((task: number, callback: (err?: Error) => void) => {
@@ -43,14 +43,16 @@ describe('Create a queue', () => {
   });
 
   describe('With 1 concurrency', () => {
-    it('Runs tasks sequentially one at a time', (done) => {
+    it('Runs tasks sequentially one at a time', done => {
       let q = new Queue((task: number, callback: (err?: Error) => void) => {
         assert.equal(q.active, 1);
         process.nextTick(() => { callback(null); });
       }, { concurrency: 1 });
 
       let total = 5, called = 0;
-      const callback = () => { if (++called === total) { done(); } };
+      const callback = () => {
+        if (++called === total) { done(); }
+      };
       for (let i = 0; i < total; i++) {
         q.push(i, callback);
         assert.equal(q.active, 1);
@@ -59,8 +61,8 @@ describe('Create a queue', () => {
   });
 
   describe('Call worker callback twice', () => {
-    it('Calls task callback once', (done) => {
-      let q = new Queue((task: number, callback: (err?: Error) => void) => {
+    it('Calls task callback once', done => {
+      let q = new Queue((task: unknown, callback: (err?: Error) => void) => {
         // Intentionally call callback twice.
         process.nextTick(() => {
           callback(null);
@@ -72,7 +74,7 @@ describe('Create a queue', () => {
   });
 
   describe('Kill it halfway', () => {
-    it('Does not run additional tasks', (done) => {
+    it('Does not run additional tasks', done => {
       let results: string[] = [];
       let q = new Queue((task: string, callback: (err?: Error) => void) => {
         results.push(task);

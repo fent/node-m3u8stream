@@ -37,10 +37,10 @@ export default class DashMPDParser extends Writable implements Parser {
         Number: seq,
         Time: currtime,
       };
-      return str.replace(/\$(\w+)\$/g, (m, p1) => context[p1] + '');
+      return str.replace(/\$(\w+)\$/g, (m, p1) => `${context[p1]}`);
     };
 
-    this._parser.on('opentag', (node) => {
+    this._parser.on('opentag', node => {
       switch (node.name) {
         case 'mpd':
           currtime =
@@ -83,10 +83,10 @@ export default class DashMPDParser extends Writable implements Parser {
         case 'adaptationset':
         case 'representation':
           treeLevel++;
-          if (targetID == null) {
+          if (!targetID) {
             targetID = node.attributes.id;
           }
-          getSegments = node.attributes.id === targetID + '';
+          getSegments = node.attributes.id === `${targetID}`;
           if (getSegments) {
             if (periodStart) {
               currtime += periodStart;
@@ -111,7 +111,7 @@ export default class DashMPDParser extends Writable implements Parser {
           if (getSegments) {
             gotSegments = true;
             let tl = timeline.shift();
-            let segmentDuration = (tl && tl.duration || duration) / timescale * 1000;
+            let segmentDuration = (tl?.duration || duration) / timescale * 1000;
             this.emit('item', {
               url: baseURL.filter(s => !!s).join('') + node.attributes.media,
               seq: seq++,
@@ -122,7 +122,7 @@ export default class DashMPDParser extends Writable implements Parser {
           break;
       }
     });
-    
+
     const onEnd = (): void => {
       if (isStatic) { this.emit('endlist'); }
       if (!getSegments) {
@@ -132,7 +132,7 @@ export default class DashMPDParser extends Writable implements Parser {
       }
     };
 
-    this._parser.on('closetag', (tagName) => {
+    this._parser.on('closetag', tagName => {
       switch (tagName) {
         case 'adaptationset':
         case 'representation':
@@ -148,8 +148,8 @@ export default class DashMPDParser extends Writable implements Parser {
                 duration: 0,
               });
             }
-            for (let { duration, repeat, time } of timeline) {
-              duration = duration / timescale * 1000;
+            for (let { duration: itemDuration, repeat, time } of timeline) {
+              itemDuration = itemDuration / timescale * 1000;
               repeat = repeat || 1;
               currtime = time || currtime;
               for (let i = 0; i < repeat; i++) {
@@ -157,9 +157,9 @@ export default class DashMPDParser extends Writable implements Parser {
                   url: baseURL.filter(s => !!s).join('') +
                   tmpl(segmentTemplate.media),
                   seq: seq++,
-                  duration,
+                  duration: itemDuration,
                 });
-                currtime += duration;
+                currtime += itemDuration;
               }
             }
           }
@@ -173,7 +173,7 @@ export default class DashMPDParser extends Writable implements Parser {
       }
     });
 
-    this._parser.on('text', (text) => {
+    this._parser.on('text', text => {
       if (lastTag === 'baseurl') {
         baseURL[treeLevel] = text;
         lastTag = null;

@@ -5,8 +5,8 @@ import { humanStr } from '../dist/parse-time';
 describe('parse-time', () => {
   it('Time format 00:00:00.000', () => {
     assert.equal(humanStr('25.000'), 25000);
-    assert.equal(humanStr('05:30'), 60000 * 5 + 30000);
-    assert.equal(humanStr('01:05:30'), 60000 * 60 + 60000 * 5 + 30000);
+    assert.equal(humanStr('05:30'), (60000 * 5) + 30000);
+    assert.equal(humanStr('01:05:30'), (60000 * 60) + (60000 * 5) + 30000);
     assert.equal(humanStr('1:30.123'), 60000 + 30000 + 123);
   });
 
@@ -14,7 +14,7 @@ describe('parse-time', () => {
     assert.equal(humanStr('2ms'), 2);
     assert.equal(humanStr('1m'), 60000);
     assert.equal(humanStr('1m10s'), 60000 + 10000);
-    assert.equal(humanStr('2hm10s500ms'), 3600000 * 2 + 10000 + 500);
+    assert.equal(humanStr('2hm10s500ms'), (3600000 * 2) + 10000 + 500);
   });
 
   it('No format', () => {

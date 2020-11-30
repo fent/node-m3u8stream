@@ -31,7 +31,7 @@ namespace m3u8stream {
     on(event: string | symbol, listener: (...args: any) => void): this;
   }
 
-  export interface m3u8stream {
+  export interface m3u8streamFunc {
     (playlistURL: string, options?: m3u8stream.Options): Stream;
     parseTimestamp(time: number | string): number;
   }
@@ -42,14 +42,15 @@ interface TimedItem extends Item {
 }
 
 const supportedParsers = {
-  'm3u8': m3u8Parser,
+  m3u8: m3u8Parser,
   'dash-mpd': DashMPDParser,
 };
 
 let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream => {
   const stream = new PassThrough() as m3u8stream.Stream;
   const chunkReadahead = options.chunkReadahead || 3;
-  const liveBuffer = options.liveBuffer || 20000; // 20 seconds
+  // 20 seconds.
+  const liveBuffer = options.liveBuffer || 20000;
   const requestOptions = options.requestOptions;
   const Parser = supportedParsers[options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8')];
   if (!Parser) {
@@ -69,29 +70,29 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
   };
 
   let currSegment: miniget.Stream | null;
-  const streamQueue = new Queue((req, callback): void => {
+  const streamQueue = new Queue((req: miniget.Stream, callback): void => {
     currSegment = req;
     // Count the size manually, since the `content-length` header is not
     // always there.
     let size = 0;
     req.on('data', (chunk: Buffer) => size += chunk.length);
     req.pipe(stream, { end: false });
-    req.on('end', () => callback(undefined, size));
+    req.on('end', () => callback(null, size));
   }, { concurrency: 1 });
 
   let segmentNumber = 0;
   let downloaded = 0;
   const requestQueue = new Queue((segment: Item, callback: () => void): void => {
-    let options = Object.assign({}, requestOptions);
+    let reqOptions = Object.assign({}, requestOptions);
     if (segment.range) {
-      options.headers = Object.assign({}, options.headers, {
+      reqOptions.headers = Object.assign({}, reqOptions.headers, {
         Range: `bytes=${segment.range.start}-${segment.range.end}`,
       });
     }
-    let req = miniget(urlResolve(playlistURL, segment.url), options);
+    let req = miniget(urlResolve(playlistURL, segment.url), reqOptions);
     req.on('error', callback);
     forwardEvents(req);
-    streamQueue.push(req, (err, size) => {
+    streamQueue.push(req, (_, size) => {
       downloaded += +size;
       stream.emit('progress', {
         num: ++segmentNumber,
@@ -176,7 +177,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         // Only keep the last `liveBuffer` of items.
         while (tailedItems.length > 1 &&
           tailedItemsDuration - tailedItems[0].duration > liveBuffer) {
-          tailedItemsDuration -= (tailedItems.shift() as TimedItem).duration;
+          tailedItemsDuration -= tailedItems.shift().duration;
         }
       }
       starttime += timedItem.duration;
@@ -187,7 +188,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
       // If we are too ahead of the stream, make sure to get the
       // latest available items with a small buffer.
       if (!addedItems.length && tailedItems.length) {
-        tailedItems.forEach((item) => { addItem(item); });
+        tailedItems.forEach(item => { addItem(item); });
       }
 
       // Refresh the playlist when remaining segments get low.
@@ -196,7 +197,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
       // Throttle refreshing the playlist by looking at the duration
       // of live items added on this refresh.
       minRefreshTime =
-        addedItems.reduce(((total, item) => item.duration + total), 0);
+        addedItems.reduce((total, item) => item.duration + total, 0);
 
       fetchingPlaylist = false;
       onQueuedEnd();
@@ -215,7 +216,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
   };
 
   return stream;
-}) as m3u8stream.m3u8stream;
+}) as m3u8stream.m3u8streamFunc;
 m3u8stream.parseTimestamp = humanStr;
 
 export = m3u8stream;

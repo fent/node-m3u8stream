@@ -7,14 +7,14 @@ import assert from 'assert';
 
 describe('dash MPD parser', () => {
   describe('Playlist with one representation', () => {
-    it('Emits all segments', (done) => {
+    it('Emits all segments', done => {
       let filepath = path.resolve(__dirname, 'playlists/simple.mpd');
       let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser();
       let starttime: number;
       parser.on('starttime', a => starttime = a);
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -51,13 +51,13 @@ describe('dash MPD parser', () => {
   });
 
   describe('Playlist with multiple representations', () => {
-    it('Emits all segments', (done) => {
+    it('Emits all segments', done => {
       let filepath = path.resolve(__dirname,
         'playlists/multi-representation.mpd');
       let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser('140');
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -93,13 +93,13 @@ describe('dash MPD parser', () => {
     });
 
     describe('With a representation with initialization segment', () => {
-      it('Emits all segments', (done) => {
+      it('Emits all segments', done => {
         let filepath = path.resolve(__dirname,
           'playlists/multi-representation.mpd');
         let items: Item[] = [];
         let endlist = false;
         const parser = new DashMPDParser('133');
-        parser.on('item', (item) => { items.push(item); });
+        parser.on('item', item => { items.push(item); });
         parser.on('endlist', () => { endlist = true; });
         parser.on('error', done);
         let rs = fs.createReadStream(filepath);
@@ -134,16 +134,16 @@ describe('dash MPD parser', () => {
     });
 
     describe('With a target representation that isn\'t found', () => {
-      it('Emits error', (done) => {
+      it('Emits error', done => {
         let filepath = path.resolve(__dirname,
           'playlists/multi-representation.mpd');
         let items = [];
         let endlist = false;
         let id = 'willnotfindthis';
         const parser = new DashMPDParser(id);
-        parser.on('item', (item) => { items.push(item); });
+        parser.on('item', item => { items.push(item); });
         parser.on('endlist', () => { endlist = true; });
-        parser.on('error', (err) => {
+        parser.on('error', err => {
           assert.ok(endlist);
           assert.equal(items.length, 0);
           assert.equal(err.message, `Representation '${id}' not found`);
@@ -156,12 +156,12 @@ describe('dash MPD parser', () => {
   });
 
   describe('Static playlist', () => {
-    it('Emits all segments', (done) => {
+    it('Emits all segments', done => {
       let filepath = path.resolve(__dirname, 'playlists/example.mpd');
       let items: Item[] = [];
       let endlist = false;
       const parser = new DashMPDParser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -196,13 +196,13 @@ describe('dash MPD parser', () => {
   });
 
   describe('Playlist with <segmentTemplate>', () => {
-    it('Segments are generated and emitted', (done) => {
+    it('Segments are generated and emitted', done => {
       let filepath = path.resolve(__dirname, 'playlists/segment-template.mpd');
       let items: Item[] = [];
       let endlist = false;
       let timescale = 22050;
       const parser = new DashMPDParser();
-      parser.on('item', (item) => { items.push(item); });
+      parser.on('item', item => { items.push(item); });
       parser.on('endlist', () => { endlist = true; });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath);
@@ -250,13 +250,13 @@ describe('dash MPD parser', () => {
     });
 
     describe('Without initialization segment', () => {
-      it('Segments are generated and emitted', (done) => {
+      it('Segments are generated and emitted', done => {
         let filepath = path.resolve(__dirname, 'playlists/segment-template-2.mpd');
         let items: Item[] = [];
         let endlist = false;
         let timescale = 1000;
         const parser = new DashMPDParser();
-        parser.on('item', (item) => { items.push(item); });
+        parser.on('item', item => { items.push(item); });
         parser.on('endlist', () => { endlist = true; });
         parser.on('error', done);
         let rs = fs.createReadStream(filepath);
@@ -279,7 +279,7 @@ describe('dash MPD parser', () => {
     });
 
     describe('Contains <SegmentTemplate> inside <Representation>', () => {
-      it('Segments are emitted', (done) => {
+      it('Segments are emitted', done => {
         let filepath = path.resolve(__dirname, 'playlists/facebook.mpd');
         const parser = new DashMPDParser();
         let items: Item[] = [];

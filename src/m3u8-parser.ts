@@ -25,17 +25,17 @@ export default class m3u8Parser extends Writable implements Parser {
     });
   }
 
-  _parseAttrList(value: string) {
+  private _parseAttrList(value: string) {
     let attrs: { [key: string]: string } = {};
     let regex = /([A-Z0-9-]+)=(?:"([^"]*?)"|([^,]*?))/g;
     let match;
-    while ((match = regex.exec(value)) != null) {
+    while ((match = regex.exec(value)) !== null) {
       attrs[match[1]] = match[2] || match[3];
     }
     return attrs;
   }
 
-  _parseRange(value: string) {
+  private _parseRange(value: string) {
     if (!value) return null;
     let svalue = value.split('@');
     let start = svalue[1] ? parseInt(svalue[1]) : this._lastItemRangeEnd + 1;
@@ -86,7 +86,6 @@ export default class m3u8Parser extends Writable implements Parser {
           this.emit('endlist');
           break;
       }
-
     } else if (!/^#/.test(line) && line.trim()) {
       // This is a segment
       this.emit('item', {

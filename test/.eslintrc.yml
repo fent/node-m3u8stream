@@ -2,3 +2,4 @@ env:
   mocha: true
 rules:
   max-nested-callbacks: off
+  '@typescript-eslint/ban-ts-comment': off

@@ -1,4 +1,4 @@
-import Queue from '../dist/queue';
+import { Queue, Callback } from '../dist/queue';
 import assert from 'assert';
 import sinon from 'sinon';
 
@@ -12,7 +12,7 @@ describe('Create a queue', () => {
     it('Defaults to a set concurrency', done => {
       let maxms: number;
       let lastTask: number;
-      let q = new Queue((task: number, callback: (err?: Error) => void) => {
+      let q = new Queue((task: number, callback: Callback) => {
         if (lastTask) {
           // Make sure tasks are called in order.
           // Even if they don't finish in order.
@@ -44,7 +44,7 @@ describe('Create a queue', () => {
 
   describe('With 1 concurrency', () => {
     it('Runs tasks sequentially one at a time', done => {
-      let q = new Queue((task: number, callback: (err?: Error) => void) => {
+      let q = new Queue((task: number, callback: Callback) => {
         assert.equal(q.active, 1);
         process.nextTick(() => { callback(null); });
       }, { concurrency: 1 });
@@ -62,7 +62,7 @@ describe('Create a queue', () => {
 
   describe('Call worker callback twice', () => {
     it('Calls task callback once', done => {
-      let q = new Queue((task: unknown, callback: (err?: Error) => void) => {
+      let q = new Queue((task: unknown, callback: Callback) => {
         // Intentionally call callback twice.
         process.nextTick(() => {
           callback(null);
@@ -76,7 +76,7 @@ describe('Create a queue', () => {
   describe('Kill it halfway', () => {
     it('Does not run additional tasks', done => {
       let results: string[] = [];
-      let q = new Queue((task: string, callback: (err?: Error) => void) => {
+      let q = new Queue((task: string, callback: Callback) => {
         results.push(task);
         process.nextTick(() => {
           callback(null);

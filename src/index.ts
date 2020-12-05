@@ -3,7 +3,7 @@ import { resolve as urlResolve } from 'url';
 import miniget from 'miniget';
 import m3u8Parser from './m3u8-parser';
 import DashMPDParser from './dash-mpd-parser';
-import Queue from './queue';
+import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
 import { Item } from './parser';
 
@@ -82,7 +82,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
 
   let segmentNumber = 0;
   let downloaded = 0;
-  const requestQueue = new Queue((segment: Item, callback: () => void): void => {
+  const requestQueue = new Queue((segment: Item, callback: Callback): void => {
     let reqOptions = Object.assign({}, requestOptions);
     if (segment.range) {
       reqOptions.headers = Object.assign({}, reqOptions.headers, {
@@ -100,7 +100,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         duration: segment.duration,
         url: segment.url,
       }, requestQueue.total, downloaded);
-      callback();
+      callback(null);
     });
   }, { concurrency: chunkReadahead });
 
@@ -120,7 +120,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
   let isStatic = false;
   let lastRefresh: number;
 
-  const onQueuedEnd = (err?: Error): void => {
+  const onQueuedEnd = (err: Error | null): void => {
     currSegment = null;
     if (err) {
       onError(err);
@@ -177,7 +177,8 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         // Only keep the last `liveBuffer` of items.
         while (tailedItems.length > 1 &&
           tailedItemsDuration - tailedItems[0].duration > liveBuffer) {
-          tailedItemsDuration -= tailedItems.shift().duration;
+          const lastItem = tailedItems.shift() as TimedItem;
+          tailedItemsDuration -= lastItem.duration;
         }
       }
       starttime += timedItem.duration;
@@ -200,7 +201,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         addedItems.reduce((total, item) => item.duration + total, 0);
 
       fetchingPlaylist = false;
-      onQueuedEnd();
+      onQueuedEnd(null);
     });
   };
   refreshPlaylist();

@@ -32,7 +32,7 @@ export default class DashMPDParser extends Writable implements Parser {
     let periodStart: number;
 
     const tmpl = (str: string): string => {
-      const context: { [key: string]: string | number } = {
+      const context: { [key: string]: string | number | undefined } = {
         RepresentationID: targetID,
         Number: seq,
         Time: currtime,

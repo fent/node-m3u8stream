@@ -9,7 +9,7 @@ import { humanStr } from '../dist/parse-time';
 
 
 nock.disableNetConnect();
-const concat = (stream: PassThrough, callback: (err: Error, body: string) => void) => {
+const concat = (stream: PassThrough, callback: (err: Error | null, body: string) => void) => {
   let body = '';
   stream.setEncoding('utf8');
   stream.on('data', (chunk: string) => { body += chunk; });
@@ -580,6 +580,9 @@ describe('m3u8stream', () => {
         const range = this.req.headers.range;
         assert.ok(range);
         const rangeMatch = range.match(/bytes=(\d+)-(\d+)/);
+        if (!rangeMatch) {
+          throw Error(`Bad range: ${range}`);
+        }
         return fs.createReadStream(filename, {
           start: parseInt(rangeMatch[1]), end: parseInt(rangeMatch[2]),
         });

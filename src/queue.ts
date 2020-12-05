@@ -1,12 +1,13 @@
-type Callback = (err?: Error, result?: any) => void;
+export type Callback = (err: Error | null, result?: any) => void;
 interface Task<T> {
   item: T;
-  callback: Callback;
+  callback?: Callback;
 }
+type Worker<T> = (item: T, cb: Callback) => void;
 
-export default class Queue<T = unknown> {
-  _worker: (item: any, cb: Callback) => void;
-  _concurrency: number;
+export class Queue<T = unknown> {
+  private _worker: Worker<T>;
+  private _concurrency: number;
   tasks: Task<T>[];
   total: number;
   active: number;
@@ -18,7 +19,7 @@ export default class Queue<T = unknown> {
    * @param {Object} options
    * @param {!number} options.concurrency
    */
-  constructor(worker: (item: T, cb: Callback) => void, options: { concurrency?: number } = {}) {
+  constructor(worker: Worker<T>, options: { concurrency?: number } = {}) {
     this._worker = worker;
     this._concurrency = options.concurrency || 1;
     this.tasks = [];
@@ -45,7 +46,7 @@ export default class Queue<T = unknown> {
    */
   _next(): void {
     if (this.active >= this._concurrency || !this.tasks.length) { return; }
-    const { item, callback } = this.tasks.shift();
+    const { item, callback } = this.tasks.shift() as Task<T>;
     let callbackCalled = false;
     this.active++;
     this._worker(item, (err, result) => {

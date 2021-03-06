@@ -1,5 +1,4 @@
 import { PassThrough } from 'stream';
-import { resolve as urlResolve } from 'url';
 import miniget from 'miniget';
 import m3u8Parser from './m3u8-parser';
 import DashMPDParser from './dash-mpd-parser';
@@ -7,6 +6,14 @@ import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
 import { Item } from './parser';
 
+/**
+ * URL constructor
+ *
+ * For compatibility with browser and Node.js APIs
+ */
+const URL = typeof window !== 'undefined' ? window.URL : require('url').URL; /* global window */
+
+exports.URL = URL;
 
 namespace m3u8stream {
   export interface Options {
@@ -89,7 +96,8 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         Range: `bytes=${segment.range.start}-${segment.range.end}`,
       });
     }
-    let req = miniget(urlResolve(playlistURL, segment.url), reqOptions);
+    let targetUrl = new URL(segment.url, playlistURL).href;
+    let req = miniget(targetUrl, reqOptions);
     req.on('error', callback);
     forwardEvents(req);
     streamQueue.push(req, (_, size) => {

@@ -10,8 +10,9 @@ import { Item } from './parser';
  * URL constructor
  *
  * For compatibility with browser and Node.js APIs
+ * Checks the global window for a URL library, else defaults to the node.js module
  */
-const URL = typeof window !== 'undefined' ? window.URL : require('url').URL; /* global window */
+const URL = typeof window !== 'undefined' ? window.URL : require('url').URL;
 
 namespace m3u8stream {
   export interface Options {

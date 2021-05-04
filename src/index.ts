@@ -13,8 +13,6 @@ import { Item } from './parser';
  */
 const URL = typeof window !== 'undefined' ? window.URL : require('url').URL; /* global window */
 
-exports.URL = URL;
-
 namespace m3u8stream {
   export interface Options {
     begin?: number | string;

@@ -88,7 +88,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         Range: `bytes=${segment.range.start}-${segment.range.end}`,
       });
     }
-    let req = miniget(new URL(segment.url, playlistURL), reqOptions);
+    let req = miniget(new URL(segment.url, playlistURL).toString(), reqOptions);
     req.on('error', callback);
     forwardEvents(req);
     streamQueue.push(req, (_, size) => {

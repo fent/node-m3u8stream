@@ -29,7 +29,7 @@
     "lint:fix": "eslint --fix ./src ./test"
   },
   "dependencies": {
-    "miniget": "^4.0.0",
+    "miniget": "^4.2.1",
     "sax": "^1.2.4"
   },
   "devDependencies": {

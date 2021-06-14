@@ -104,7 +104,6 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
   }, { concurrency: chunkReadahead });
 
   const onError = (err: Error): void => {
-    if (ended) { return; }
     stream.emit('error', err);
     // Stop on any error.
     stream.end();

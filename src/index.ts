@@ -26,7 +26,7 @@ namespace m3u8stream {
   }
   export interface Stream extends PassThrough {
     end: () => void;
-    on(event: 'progress', progress: Progress, totalSegments: number, downloadedBytes: number): this;
+    on(event: 'progress', listener: (progress: Progress, totalSegments: number, downloadedBytes: number) => void): this;
     on(event: string | symbol, listener: (...args: any) => void): this;
   }
 

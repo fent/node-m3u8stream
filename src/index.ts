@@ -46,7 +46,7 @@ const supportedParsers = {
 };
 
 let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream => {
-  const stream = new PassThrough() as m3u8stream.Stream;
+  const stream = new PassThrough({ highWaterMark: options.highWaterMark }) as m3u8stream.Stream;
   const chunkReadahead = options.chunkReadahead || 3;
   // 20 seconds.
   const liveBuffer = options.liveBuffer || 20000;

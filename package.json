@@ -29,12 +29,12 @@
     "lint:fix": "eslint --fix ./src ./test"
   },
   "dependencies": {
-    "miniget": "^4.2.1",
+    "miniget": "^4.2.2",
     "sax": "^1.2.4"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.0",
-    "@types/node": "^13.1.0",
+    "@types/node": "^17.0.8",
     "@types/sax": "^1.0.1",
     "@types/sinon": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^4.8.2",

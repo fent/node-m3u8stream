@@ -184,7 +184,7 @@ export default class DashMPDParser extends Writable implements Parser {
   }
 
   _write(chunk: Buffer, encoding: string, callback: () => void): void {
-    this._parser.write(chunk, encoding);
+    this._parser.write(chunk);
     callback();
   }
 }

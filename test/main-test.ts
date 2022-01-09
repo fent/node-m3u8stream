@@ -19,7 +19,7 @@ const concat = (stream: PassThrough, callback: (err: Error | null, body: string)
 
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
-  before(() => { global.setTimeout = (fn, ms, ...args) => setTimeout(fn, 0, ...args); });
+  before(() => { global.setTimeout = process.nextTick as typeof global.setTimeout; });
   after(() => { global.setTimeout = setTimeout; });
 
   describe('Simple media playlist', () => {

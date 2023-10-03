@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "miniget": "^4.2.2",
-    "sax": "^1.2.4"
+    "sax": "^1.3.0"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.0",

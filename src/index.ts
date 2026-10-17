@@ -152,6 +152,8 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
     });
     parser.on('endlist', () => { isStatic = true; });
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
+    let targetDuration = 0, lastDuration = 0;
+    parser.on('targetduration', (ms: number) => { targetDuration = ms; });
 
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
@@ -180,6 +182,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         }
       }
       starttime += timedItem.duration;
+      lastDuration = timedItem.duration || lastDuration;
     });
 
     parser.on('end', () => {
@@ -193,10 +196,11 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
       // Refresh the playlist when remaining segments get low.
       refreshThreshold = Math.max(1, Math.ceil(addedItems.length * 0.01));
 
-      // Throttle refreshing the playlist by looking at the duration
-      // of live items added on this refresh.
+      // Reload after the target duration, or half of it if nothing new came
+      // in (RFC 8216 6.3.4). DASH has no target duration, so the last
+      // segment's stands in.
       minRefreshTime =
-        addedItems.reduce((total, item) => item.duration + total, 0);
+        (targetDuration || lastDuration) / (addedItems.length ? 1 : 2);
 
       fetchingPlaylist = false;
       onQueuedEnd(null);

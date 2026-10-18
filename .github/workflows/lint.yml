@@ -2,6 +2,9 @@ name: Lint
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   eslint:
     name: Lint
@@ -10,9 +13,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
 
-      - name: npm install, build, and lint
+      - name: npm ci, build, and lint
         run: |
-          npm install
+          npm ci
           npm run build --if-present
           npm run-script lint

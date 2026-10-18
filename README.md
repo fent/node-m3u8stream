@@ -5,7 +5,8 @@ Reads segments from a [m3u8 playlist][1] or [DASH MPD file][2] into a consumable
 [1]: https://tools.ietf.org/html/draft-pantos-http-live-streaming-20
 [2]: https://dashif.org/docs/DASH-IF-IOP-v4.2-clean.pdf
 
-![Depfu](https://img.shields.io/depfu/fent/node-m3u8stream)
+[![npm](https://img.shields.io/npm/v/m3u8stream)](https://www.npmjs.com/package/m3u8stream)
+[![Node.js CI](https://github.com/fent/node-m3u8stream/actions/workflows/nodejs.yml/badge.svg)](https://github.com/fent/node-m3u8stream/actions/workflows/nodejs.yml)
 [![codecov](https://codecov.io/gh/fent/node-m3u8stream/branch/master/graph/badge.svg)](https://codecov.io/gh/fent/node-m3u8stream)
 
 

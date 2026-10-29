@@ -7,23 +7,33 @@ import nock from 'nock';
 import { spy } from 'sinon';
 import { humanStr } from '../dist/parse-time';
 
-
 nock.disableNetConnect();
-const concat = (stream: PassThrough, callback: (err: Error | null, body: string) => void) => {
+const concat = (
+  stream: PassThrough,
+  callback: (err: Error | null, body: string) => void,
+) => {
   let body = '';
   stream.setEncoding('utf8');
-  stream.on('data', (chunk: string) => { body += chunk; });
+  stream.on('data', (chunk: string) => {
+    body += chunk;
+  });
   stream.on('error', callback);
-  stream.on('end', () => { callback(null, body); });
+  stream.on('end', () => {
+    callback(null, body);
+  });
 };
 
 describe('m3u8stream', () => {
   let setTimeout = global.setTimeout;
-  before(() => { global.setTimeout = process.nextTick as typeof global.setTimeout; });
-  after(() => { global.setTimeout = setTimeout; });
+  before(() => {
+    global.setTimeout = process.nextTick as typeof global.setTimeout;
+  });
+  after(() => {
+    global.setTimeout = setTimeout;
+  });
 
   describe('Simple media playlist', () => {
-    it('Concatenates segments into stream', done => {
+    it('Concatenates segments into stream', (done) => {
       let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
@@ -42,11 +52,13 @@ describe('m3u8stream', () => {
       });
     });
 
-    it('Concatenates relative segments into stream', done => {
+    it('Concatenates relative segments into stream', (done) => {
       let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
-        .replyWithFile(200,
-          path.resolve(__dirname, 'playlists/simple_relative.m3u8'))
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/simple_relative.m3u8'),
+        )
         .get('/first.ts')
         .reply(200, 'one')
         .get('/second.ts')
@@ -62,7 +74,7 @@ describe('m3u8stream', () => {
       });
     });
 
-    it('Tracks segment download progress', done => {
+    it('Tracks segment download progress', (done) => {
       let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
@@ -82,30 +94,42 @@ describe('m3u8stream', () => {
         scope.done();
         assert.equal(body, 'onetwothree');
         assert.deepEqual(progress, [
-          [{
-            duration: 9009,
-            num: 1,
-            size: 3,
-            url: 'http://media.example.com/first.ts',
-          }, 3, 3],
-          [{
-            duration: 9009,
-            num: 2,
-            size: 3,
-            url: 'http://media.example.com/second.ts',
-          }, 3, 6],
-          [{
-            duration: 3003,
-            num: 3,
-            size: 5,
-            url: 'http://media.example.com/third.ts',
-          }, 3, 11],
+          [
+            {
+              duration: 9009,
+              num: 1,
+              size: 3,
+              url: 'http://media.example.com/first.ts',
+            },
+            3,
+            3,
+          ],
+          [
+            {
+              duration: 9009,
+              num: 2,
+              size: 3,
+              url: 'http://media.example.com/second.ts',
+            },
+            3,
+            6,
+          ],
+          [
+            {
+              duration: 3003,
+              num: 3,
+              size: 5,
+              url: 'http://media.example.com/third.ts',
+            },
+            3,
+            11,
+          ],
         ]);
         done();
       });
     });
 
-    it('Forwards events from miniget', done => {
+    it('Forwards events from miniget', (done) => {
       let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')
         .replyWithFile(200, path.resolve(__dirname, 'playlists/simple.m3u8'))
@@ -120,7 +144,7 @@ describe('m3u8stream', () => {
       let resSpy = spy();
       stream.on('request', reqSpy);
       stream.on('response', resSpy);
-      concat(stream, err => {
+      concat(stream, (err) => {
         assert.ifError(err);
         scope.done();
         assert.equal(reqSpy.callCount, 4);
@@ -130,11 +154,13 @@ describe('m3u8stream', () => {
     });
 
     describe('With `begin` set using relative format', () => {
-      it('Starts stream on segment that matches `begin`', done => {
+      it('Starts stream on segment that matches `begin`', (done) => {
         let scope = nock('https://twitch.tv')
           .get('/videos/sc.m3u8')
-          .replyWithFile(200, path.resolve(__dirname,
-            'playlists/twitch-1.1.m3u8'))
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/twitch-1.1.m3u8'),
+          )
           .get('/videos/3.ts')
           .reply(200, 'the')
           .get('/videos/4.ts')
@@ -162,25 +188,30 @@ describe('m3u8stream', () => {
           .get('/videos/15.ts')
           .reply(200, 'home');
 
-        let stream = m3u8stream('https://twitch.tv/videos/sc.m3u8', { begin: '30s' });
+        let stream = m3u8stream('https://twitch.tv/videos/sc.m3u8', {
+          begin: '30s',
+        });
         concat(stream, (err, body) => {
           assert.ifError(err);
           scope.done();
-          assert.equal(body, [
-            'the',
-            'big',
-            'brown',
-            'fox',
-            'jumped',
-            'over',
-            'the',
-            'lazy',
-            'dog',
-            'and',
-            'then',
-            'went',
-            'home',
-          ].join(''));
+          assert.equal(
+            body,
+            [
+              'the',
+              'big',
+              'brown',
+              'fox',
+              'jumped',
+              'over',
+              'the',
+              'lazy',
+              'dog',
+              'and',
+              'then',
+              'went',
+              'home',
+            ].join(''),
+          );
           done();
         });
       });
@@ -188,11 +219,10 @@ describe('m3u8stream', () => {
   });
 
   describe('Live media playlist', () => {
-    it('Refresh after nearing end of segment list', done => {
+    it('Refresh after nearing end of segment list', (done) => {
       let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-2.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-2.1.m3u8'))
         .get('/fileSequence2681.ts')
         .reply(200, 'apple')
         .get('/fileSequence2682.ts')
@@ -214,8 +244,7 @@ describe('m3u8stream', () => {
         .get('/fileSequence2690.ts')
         .reply(200, 'java')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-2.2.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-2.2.m3u8'))
         .get('/fileSequence2691.ts')
         .reply(200, 'kiwi')
         .get('/fileSequence2692.ts')
@@ -241,39 +270,43 @@ describe('m3u8stream', () => {
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
-        assert.equal(body, [
-          'apple',
-          'banana',
-          'cherry',
-          'durango',
-          'eggfruit',
-          'fig',
-          'grape',
-          'hackberry',
-          'imbe',
-          'java',
-          'kiwi',
-          'lime',
-          'melon',
-          'nut',
-          'orange',
-          'pear',
-          'melon',
-          'quince',
-          'raspberry',
-          'strawberry',
-        ].join(''));
+        assert.equal(
+          body,
+          [
+            'apple',
+            'banana',
+            'cherry',
+            'durango',
+            'eggfruit',
+            'fig',
+            'grape',
+            'hackberry',
+            'imbe',
+            'java',
+            'kiwi',
+            'lime',
+            'melon',
+            'nut',
+            'orange',
+            'pear',
+            'melon',
+            'quince',
+            'raspberry',
+            'strawberry',
+          ].join(''),
+        );
         done();
       });
     });
 
-    it('Stops on error getting playlist', done => {
+    it('Stops on error getting playlist', (done) => {
       let scope = nock('http://mysite.com')
         .get('/pl.m3u8')
         .replyWithError('Nooo');
       let stream = m3u8stream('http://mysite.com/pl.m3u8', {
-        requestOptions: { maxRetries: 0 } });
-      stream.on('error', err => {
+        requestOptions: { maxRetries: 0 },
+      });
+      stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'Nooo');
         done();
@@ -283,11 +316,10 @@ describe('m3u8stream', () => {
       });
     });
 
-    it('Stops on error refreshing playlist', done => {
+    it('Stops on error refreshing playlist', (done) => {
       let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/fileSequence2681.ts')
         .reply(200, 'one')
         .get('/fileSequence2682.ts')
@@ -298,8 +330,9 @@ describe('m3u8stream', () => {
         .replyWithError('uh oh');
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
-        requestOptions: { maxRetries: 0 } });
-      stream.on('error', err => {
+        requestOptions: { maxRetries: 0 },
+      });
+      stream.on('error', (err) => {
         scope.done();
         assert.equal(err.message, 'uh oh');
         done();
@@ -309,11 +342,10 @@ describe('m3u8stream', () => {
       });
     });
 
-    it('Stops on error getting a segment', done => {
+    it('Stops on error getting a segment', (done) => {
       let scope = nock('https://priv.example.com')
         .get('/playme.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/fileSequence2681.ts')
         .reply(200, 'hello')
         .get('/fileSequence2682.ts')
@@ -322,7 +354,7 @@ describe('m3u8stream', () => {
         chunkReadahead: 1,
         requestOptions: { maxRetries: 0 },
       });
-      stream.on('error', err => {
+      stream.on('error', (err) => {
         assert.equal(err.message, 'bad segment');
         scope.done();
         done();
@@ -332,11 +364,10 @@ describe('m3u8stream', () => {
       });
     });
 
-    it('Handles retrieving same live playlist twice', done => {
+    it('Handles retrieving same live playlist twice', (done) => {
       let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/fileSequence2681.ts')
         .reply(200, 'apple')
         .get('/fileSequence2682.ts')
@@ -344,11 +375,9 @@ describe('m3u8stream', () => {
         .get('/fileSequence2683.ts')
         .reply(200, 'cherry')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.2.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.2.m3u8'))
         .get('/fileSequence2684.ts')
         .reply(200, 'fig')
         .get('/fileSequence2685.ts')
@@ -358,18 +387,15 @@ describe('m3u8stream', () => {
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
-        assert.equal(body, [
-          'apple',
-          'banana',
-          'cherry',
-          'fig',
-          'grape',
-        ].join(''));
+        assert.equal(
+          body,
+          ['apple', 'banana', 'cherry', 'fig', 'grape'].join(''),
+        );
         done();
       });
     });
 
-    it('Reloads after the target duration, or half of it when unchanged', done => {
+    it('Reloads after the target duration, or half of it when unchanged', (done) => {
       let nextTick = global.setTimeout;
       let delays: number[] = [];
       global.setTimeout = ((fn: () => void, ms: number) => {
@@ -378,8 +404,7 @@ describe('m3u8stream', () => {
       }) as typeof global.setTimeout;
       let scope = nock('https://priv.example.com')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/fileSequence2681.ts')
         .reply(200, 'apple')
         .get('/fileSequence2682.ts')
@@ -387,33 +412,36 @@ describe('m3u8stream', () => {
         .get('/fileSequence2683.ts')
         .reply(200, 'cherry')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.1.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/live-1.2.m3u8'))
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.2.m3u8'))
         .get('/fileSequence2684.ts')
         .reply(200, 'fig')
         .get('/fileSequence2685.ts')
         .reply(200, 'grape');
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
-      concat(stream, err => {
+      concat(stream, (err) => {
         global.setTimeout = nextTick;
         assert.ifError(err);
         scope.done();
-        assert.deepEqual(delays.map(ms => Math.round(ms / 1000)), [8, 4]);
+        assert.deepEqual(
+          delays.map((ms) => Math.round(ms / 1000)),
+          [8, 4],
+        );
         done();
       });
     });
 
     describe('With dated segments', () => {
       describe('With `begin` set to now', () => {
-        it('Starts stream on segment that matches `begin`', done => {
+        it('Starts stream on segment that matches `begin`', (done) => {
           let scope = nock('https://yt.com')
             .get('/playlist.m3u8')
-            .replyWithFile(200, path.resolve(__dirname,
-              'playlists/youtube-live-1.1.m3u8'))
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
             .get('/fileSequence0005.ts')
             .reply(200, '05')
             .get('/fileSequence0006.ts')
@@ -423,8 +451,10 @@ describe('m3u8stream', () => {
             .get('/fileSequence0008.ts')
             .reply(200, '08')
             .get('/playlist.m3u8')
-            .replyWithFile(200, path.resolve(__dirname,
-              'playlists/youtube-live-1.2.m3u8'))
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.2.m3u8'),
+            )
             .get('/fileSequence0009.ts')
             .reply(200, '09')
             .get('/fileSequence0010.ts')
@@ -440,27 +470,23 @@ describe('m3u8stream', () => {
           concat(stream, (err, body) => {
             assert.ifError(err);
             scope.done();
-            assert.equal(body, [
-              '05',
-              '06',
-              '07',
-              '08',
-              '09',
-              '10',
-              '11',
-              '12',
-            ].join(''));
+            assert.equal(
+              body,
+              ['05', '06', '07', '08', '09', '10', '11', '12'].join(''),
+            );
             done();
           });
         });
       });
 
       describe('With `begin` set using relative format', () => {
-        it('Starts stream on segment that matches `begin`', done => {
+        it('Starts stream on segment that matches `begin`', (done) => {
           let scope = nock('https://yt.com')
             .get('/playlist.m3u8')
-            .replyWithFile(200, path.resolve(__dirname,
-              'playlists/youtube-live-1.1.m3u8'))
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
             .get('/fileSequence0003.ts')
             .reply(200, '03')
             .get('/fileSequence0004.ts')
@@ -474,8 +500,10 @@ describe('m3u8stream', () => {
             .get('/fileSequence0008.ts')
             .reply(200, '08')
             .get('/playlist.m3u8')
-            .replyWithFile(200, path.resolve(__dirname,
-              'playlists/youtube-live-1.2.m3u8'))
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.2.m3u8'),
+            )
             .get('/fileSequence0009.ts')
             .reply(200, '09')
             .get('/fileSequence0010.ts')
@@ -485,22 +513,18 @@ describe('m3u8stream', () => {
             .get('/fileSequence0012.ts')
             .reply(200, '12');
 
-          let stream = m3u8stream('https://yt.com/playlist.m3u8', { begin: '10s' });
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: '10s',
+          });
           concat(stream, (err, body) => {
             assert.ifError(err);
             scope.done();
-            assert.equal(body, [
-              '03',
-              '04',
-              '05',
-              '06',
-              '07',
-              '08',
-              '09',
-              '10',
-              '11',
-              '12',
-            ].join(''));
+            assert.equal(
+              body,
+              ['03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].join(
+                '',
+              ),
+            );
             done();
           });
         });
@@ -509,7 +533,7 @@ describe('m3u8stream', () => {
 
     describe('Destroy stream', () => {
       describe('Right away', () => {
-        it('Ends stream right away with no data', done => {
+        it('Ends stream right away with no data', (done) => {
           let stream = m3u8stream('https://whatever.com/playlist.m3u8');
           concat(stream, (err, body) => {
             assert.ifError(err);
@@ -521,11 +545,13 @@ describe('m3u8stream', () => {
       });
 
       describe('In the middle of the segments list', () => {
-        it('Stops stream from emitting more data and ends it', done => {
+        it('Stops stream from emitting more data and ends it', (done) => {
           let scope = nock('https://priv.example.com')
             .get('/playlist.m3u8')
-            .replyWithFile(200, path.resolve(__dirname,
-              'playlists/live-2.1.m3u8'))
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/live-2.1.m3u8'),
+            )
             .get('/fileSequence2681.ts')
             .reply(200, 'apple')
             .get('/fileSequence2682.ts')
@@ -547,13 +573,10 @@ describe('m3u8stream', () => {
           concat(stream, (err, body) => {
             assert.ifError(err);
             scope.done();
-            assert.equal(body, [
-              'apple',
-              'banana',
-              'cherry',
-              'durango',
-              'whatever',
-            ].join(''));
+            assert.equal(
+              body,
+              ['apple', 'banana', 'cherry', 'durango', 'whatever'].join(''),
+            );
             done();
           });
         });
@@ -562,11 +585,13 @@ describe('m3u8stream', () => {
   });
 
   describe('DASH MPD playlist', () => {
-    it('Concatenates egments into stream', done => {
+    it('Concatenates egments into stream', (done) => {
       let scope = nock('https://videohost.com')
         .get('/playlist.mpd')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/multi-representation.mpd'))
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/multi-representation.mpd'),
+        )
         .get('/134/0001.ts')
         .reply(200, '01')
         .get('/134/0002.ts')
@@ -593,25 +618,17 @@ describe('m3u8stream', () => {
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
-        assert.equal(body, [
-          '01',
-          '02',
-          '03',
-          '04',
-          '05',
-          '06',
-          '07',
-          '08',
-          '09',
-          '10',
-        ].join(''));
+        assert.equal(
+          body,
+          ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'].join(''),
+        );
         done();
       });
     });
   });
 
   describe('m3u8 playlist with ranges', () => {
-    it('Makes ranged requests', done => {
+    it('Makes ranged requests', (done) => {
       let filename = path.resolve(__dirname, 'playlists/main.mp4');
       function replyWithRange(this: nock.ReplyFnContext) {
         /* eslint no-invalid-this: off */
@@ -622,13 +639,16 @@ describe('m3u8stream', () => {
           throw Error(`Bad range: ${range}`);
         }
         return fs.createReadStream(filename, {
-          start: parseInt(rangeMatch[1]), end: parseInt(rangeMatch[2]),
+          start: parseInt(rangeMatch[1]),
+          end: parseInt(rangeMatch[2]),
         });
       }
       let scope = nock('https://somethingsomething.fyi')
         .get('/playlist.m3u8')
-        .replyWithFile(200, path.resolve(__dirname,
-          'playlists/x-byterange-1.m3u8'))
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/x-byterange-1.m3u8'),
+        )
         .get('/main.mp4')
         .reply(200, replyWithRange)
         .get('/main.mp4')
@@ -641,21 +661,16 @@ describe('m3u8stream', () => {
         .reply(200, replyWithRange);
       let stream = m3u8stream('https://somethingsomething.fyi/playlist.m3u8');
       let segments: m3u8stream.Progress[] = [];
-      stream.on('progress', segment => segments.push(segment));
+      stream.on('progress', (segment) => segments.push(segment));
       concat(stream, (err, body) => {
         assert.ifError(err);
         scope.done();
         assert.deepEqual(segments, [
-          { url: 'main.mp4',
-            num: 1, size: 50, duration: 0 },
-          { url: 'main.mp4',
-            num: 2, size: 75, duration: 4969 },
-          { url: 'main.mp4',
-            num: 3, size: 70, duration: 4969 },
-          { url: 'main.mp4',
-            num: 4, size: 70, duration: 4969 },
-          { url: 'main.mp4',
-            num: 5, size: 80, duration: 4969 },
+          { url: 'main.mp4', num: 1, size: 50, duration: 0 },
+          { url: 'main.mp4', num: 2, size: 75, duration: 4969 },
+          { url: 'main.mp4', num: 3, size: 70, duration: 4969 },
+          { url: 'main.mp4', num: 4, size: 70, duration: 4969 },
+          { url: 'main.mp4', num: 5, size: 80, duration: 4969 },
         ]);
         assert.equal(body, fs.readFileSync(filename, 'utf8'));
         done();

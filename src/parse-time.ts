@@ -16,14 +16,20 @@ const timeUnits: { [key: string]: number } = {
  * @returns {number}
  */
 export const humanStr = (time: number | string): number => {
-  if (typeof time === 'number') { return time; }
-  if (numberFormat.test(time)) { return +time; }
+  if (typeof time === 'number') {
+    return time;
+  }
+  if (numberFormat.test(time)) {
+    return +time;
+  }
   const firstFormat = timeFormat.exec(time);
   if (firstFormat) {
-    return (+(firstFormat[1] || 0) * timeUnits.h) +
-      (+(firstFormat[2] || 0) * timeUnits.m) +
-      (+firstFormat[3] * timeUnits.s) +
-      +(firstFormat[4] || 0);
+    return (
+      +(firstFormat[1] || 0) * timeUnits.h +
+      +(firstFormat[2] || 0) * timeUnits.m +
+      +firstFormat[3] * timeUnits.s +
+      +(firstFormat[4] || 0)
+    );
   } else {
     let total = 0;
     const r = /(-?\d+)(ms|s|m|h)/g;

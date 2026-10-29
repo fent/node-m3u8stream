@@ -1,7 +1,6 @@
 import { Writable } from 'stream';
 import { Parser } from './parser';
 
-
 /**
  * A very simple m3u8 playlist file parser that detects tags and segments.
  */
@@ -65,7 +64,8 @@ export default class m3u8Parser extends Writable implements Parser {
           let attrs = this._parseAttrList(value);
           if (!attrs.URI) {
             this.destroy(
-              new Error('`EXT-X-MAP` found without required attribute `URI`'));
+              new Error('`EXT-X-MAP` found without required attribute `URI`'),
+            );
             return;
           }
           this.emit('item', {
@@ -82,8 +82,9 @@ export default class m3u8Parser extends Writable implements Parser {
           break;
         }
         case 'EXTINF':
-          this._nextItemDuration =
-            Math.round(parseFloat(value.split(',')[0]) * 1000);
+          this._nextItemDuration = Math.round(
+            parseFloat(value.split(',')[0]) * 1000,
+          );
           break;
         case 'EXT-X-ENDLIST':
           this.emit('endlist');
@@ -103,7 +104,9 @@ export default class m3u8Parser extends Writable implements Parser {
 
   _write(chunk: Buffer, encoding: string, callback: () => void): void {
     let lines: string[] = chunk.toString('utf8').split('\n');
-    if (this._lastLine) { lines[0] = this._lastLine + lines[0]; }
+    if (this._lastLine) {
+      lines[0] = this._lastLine + lines[0];
+    }
     lines.forEach((line: string, i: number) => {
       if (this.destroyed) return;
       if (i < lines.length - 1) {

@@ -3,7 +3,6 @@ import sax from 'sax';
 import { durationStr } from './parse-time';
 import { Parser } from './parser';
 
-
 /**
  * A wrapper around sax that emits segments.
  */
@@ -40,12 +39,12 @@ export default class DashMPDParser extends Writable implements Parser {
       return str.replace(/\$(\w+)\$/g, (m, p1) => `${context[p1]}`);
     };
 
-    this._parser.on('opentag', node => {
+    this._parser.on('opentag', (node) => {
       switch (node.name) {
         case 'mpd':
-          currtime =
-            node.attributes.availabilitystarttime ?
-              new Date(node.attributes.availabilitystarttime).getTime() : 0;
+          currtime = node.attributes.availabilitystarttime
+            ? new Date(node.attributes.availabilitystarttime).getTime()
+            : 0;
           isStatic = node.attributes.type !== 'dynamic';
           break;
         case 'period':
@@ -92,7 +91,7 @@ export default class DashMPDParser extends Writable implements Parser {
               currtime += periodStart;
             }
             if (offset) {
-              currtime -= offset / timescale * 1000;
+              currtime -= (offset / timescale) * 1000;
             }
             this.emit('starttime', currtime);
           }
@@ -100,7 +99,8 @@ export default class DashMPDParser extends Writable implements Parser {
         case 'initialization':
           if (getSegments) {
             this.emit('item', {
-              url: baseURL.filter(s => !!s).join('') + node.attributes.sourceurl,
+              url:
+                baseURL.filter((s) => !!s).join('') + node.attributes.sourceurl,
               seq: seq,
               init: true,
               duration: 0,
@@ -111,9 +111,10 @@ export default class DashMPDParser extends Writable implements Parser {
           if (getSegments) {
             gotSegments = true;
             let tl = timeline.shift();
-            let segmentDuration = (tl?.duration || duration) / timescale * 1000;
+            let segmentDuration =
+              ((tl?.duration || duration) / timescale) * 1000;
             this.emit('item', {
-              url: baseURL.filter(s => !!s).join('') + node.attributes.media,
+              url: baseURL.filter((s) => !!s).join('') + node.attributes.media,
               seq: seq++,
               duration: segmentDuration,
             });
@@ -124,7 +125,9 @@ export default class DashMPDParser extends Writable implements Parser {
     });
 
     const onEnd = (): void => {
-      if (isStatic) { this.emit('endlist'); }
+      if (isStatic) {
+        this.emit('endlist');
+      }
       if (!getSegments) {
         this.destroy(Error(`Representation '${targetID}' not found`));
       } else {
@@ -132,7 +135,7 @@ export default class DashMPDParser extends Writable implements Parser {
       }
     };
 
-    this._parser.on('closetag', tagName => {
+    this._parser.on('closetag', (tagName) => {
       switch (tagName) {
         case 'adaptationset':
         case 'representation':
@@ -141,21 +144,23 @@ export default class DashMPDParser extends Writable implements Parser {
             gotSegments = true;
             if (segmentTemplate.initialization) {
               this.emit('item', {
-                url: baseURL.filter(s => !!s).join('') +
-                tmpl(segmentTemplate.initialization),
+                url:
+                  baseURL.filter((s) => !!s).join('') +
+                  tmpl(segmentTemplate.initialization),
                 seq: seq,
                 init: true,
                 duration: 0,
               });
             }
             for (let { duration: itemDuration, repeat, time } of timeline) {
-              itemDuration = itemDuration / timescale * 1000;
+              itemDuration = (itemDuration / timescale) * 1000;
               repeat = repeat || 1;
               currtime = time || currtime;
               for (let i = 0; i < repeat; i++) {
                 this.emit('item', {
-                  url: baseURL.filter(s => !!s).join('') +
-                  tmpl(segmentTemplate.media),
+                  url:
+                    baseURL.filter((s) => !!s).join('') +
+                    tmpl(segmentTemplate.media),
                   seq: seq++,
                   duration: itemDuration,
                 });
@@ -173,7 +178,7 @@ export default class DashMPDParser extends Writable implements Parser {
       }
     });
 
-    this._parser.on('text', text => {
+    this._parser.on('text', (text) => {
       if (lastTag === 'baseurl') {
         baseURL[treeLevel] = text;
         lastTag = null;

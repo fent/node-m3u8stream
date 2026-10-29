@@ -27,7 +27,6 @@ export class Queue<T = unknown> {
     this.active = 0;
   }
 
-
   /**
    * Push a task to the queue.
    *
@@ -40,24 +39,26 @@ export class Queue<T = unknown> {
     this._next();
   }
 
-
   /**
    * Process next job in queue.
    */
   _next(): void {
-    if (this.active >= this._concurrency || !this.tasks.length) { return; }
+    if (this.active >= this._concurrency || !this.tasks.length) {
+      return;
+    }
     const { item, callback } = this.tasks.shift() as Task<T>;
     let callbackCalled = false;
     this.active++;
     this._worker(item, (err, result) => {
-      if (callbackCalled) { return; }
+      if (callbackCalled) {
+        return;
+      }
       this.active--;
       callbackCalled = true;
       callback?.(err, result);
       this._next();
     });
   }
-
 
   /**
    * Stops processing queued jobs.

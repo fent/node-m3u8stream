@@ -58,6 +58,9 @@ export default class m3u8Parser extends Writable implements Parser {
         case 'EXT-X-MEDIA-SEQUENCE':
           this._seq = parseInt(value);
           break;
+        case 'EXT-X-TARGETDURATION':
+          this.emit('targetduration', parseFloat(value) * 1000);
+          break;
         case 'EXT-X-MAP': {
           let attrs = this._parseAttrList(value);
           if (!attrs.URI) {

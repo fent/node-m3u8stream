@@ -6,7 +6,6 @@ import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
 import { Item } from './parser';
 
-
 namespace m3u8stream {
   export interface Options {
     begin?: number | string;
@@ -26,7 +25,14 @@ namespace m3u8stream {
   }
   export interface Stream extends PassThrough {
     end: () => this;
-    on(event: 'progress', listener: (progress: Progress, totalSegments: number, downloadedBytes: number) => void): this;
+    on(
+      event: 'progress',
+      listener: (
+        progress: Progress,
+        totalSegments: number,
+        downloadedBytes: number,
+      ) => void,
+    ): this;
     on(event: string | symbol, listener: (...args: any) => void): this;
   }
 
@@ -45,63 +51,93 @@ const supportedParsers = {
   'dash-mpd': DashMPDParser,
 };
 
-let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8stream.Stream => {
-  const stream = new PassThrough({ highWaterMark: options.highWaterMark }) as m3u8stream.Stream;
+let m3u8stream = ((
+  playlistURL: string,
+  options: m3u8stream.Options = {},
+): m3u8stream.Stream => {
+  const stream = new PassThrough({
+    highWaterMark: options.highWaterMark,
+  }) as m3u8stream.Stream;
   const chunkReadahead = options.chunkReadahead || 3;
   // 20 seconds.
   const liveBuffer = options.liveBuffer || 20000;
   const requestOptions = options.requestOptions;
-  const Parser = supportedParsers[options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8')];
+  const Parser =
+    supportedParsers[
+      options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8')
+    ];
   if (!Parser) {
     throw TypeError(`parser '${options.parser}' not supported`);
   }
   let begin = 0;
   if (typeof options.begin !== 'undefined') {
-    begin = typeof options.begin === 'string' ?
-      humanStr(options.begin) :
-      Math.max(options.begin - liveBuffer, 0);
+    begin =
+      typeof options.begin === 'string'
+        ? humanStr(options.begin)
+        : Math.max(options.begin - liveBuffer, 0);
   }
 
   const forwardEvents = (req: miniget.Stream) => {
-    for (let event of ['abort', 'request', 'response', 'redirect', 'retry', 'reconnect']) {
+    for (let event of [
+      'abort',
+      'request',
+      'response',
+      'redirect',
+      'retry',
+      'reconnect',
+    ]) {
       req.on(event, stream.emit.bind(stream, event));
     }
   };
 
   let currSegment: miniget.Stream | null;
-  const streamQueue = new Queue((req: miniget.Stream, callback): void => {
-    currSegment = req;
-    // Count the size manually, since the `content-length` header is not
-    // always there.
-    let size = 0;
-    req.on('data', (chunk: Buffer) => size += chunk.length);
-    req.pipe(stream, { end: false });
-    req.on('end', () => callback(null, size));
-  }, { concurrency: 1 });
+  const streamQueue = new Queue(
+    (req: miniget.Stream, callback): void => {
+      currSegment = req;
+      // Count the size manually, since the `content-length` header is not
+      // always there.
+      let size = 0;
+      req.on('data', (chunk: Buffer) => (size += chunk.length));
+      req.pipe(stream, { end: false });
+      req.on('end', () => callback(null, size));
+    },
+    { concurrency: 1 },
+  );
 
   let segmentNumber = 0;
   let downloaded = 0;
-  const requestQueue = new Queue((segment: Item, callback: Callback): void => {
-    let reqOptions = Object.assign({}, requestOptions);
-    if (segment.range) {
-      reqOptions.headers = Object.assign({}, reqOptions.headers, {
-        Range: `bytes=${segment.range.start}-${segment.range.end}`,
+  const requestQueue = new Queue(
+    (segment: Item, callback: Callback): void => {
+      let reqOptions = Object.assign({}, requestOptions);
+      if (segment.range) {
+        reqOptions.headers = Object.assign({}, reqOptions.headers, {
+          Range: `bytes=${segment.range.start}-${segment.range.end}`,
+        });
+      }
+      let req = miniget(
+        new URL(segment.url, playlistURL).toString(),
+        reqOptions,
+      );
+      req.on('error', callback);
+      forwardEvents(req);
+      streamQueue.push(req, (_, size) => {
+        downloaded += +size;
+        stream.emit(
+          'progress',
+          {
+            num: ++segmentNumber,
+            size: size,
+            duration: segment.duration,
+            url: segment.url,
+          },
+          requestQueue.total,
+          downloaded,
+        );
+        callback(null);
       });
-    }
-    let req = miniget(new URL(segment.url, playlistURL).toString(), reqOptions);
-    req.on('error', callback);
-    forwardEvents(req);
-    streamQueue.push(req, (_, size) => {
-      downloaded += +size;
-      stream.emit('progress', {
-        num: ++segmentNumber,
-        size: size,
-        duration: segment.duration,
-        url: segment.url,
-      }, requestQueue.total, downloaded);
-      callback(null);
-    });
-  }, { concurrency: chunkReadahead });
+    },
+    { concurrency: chunkReadahead },
+  );
 
   const onError = (err: Error): void => {
     stream.emit('error', err);
@@ -112,7 +148,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
   // When to look for items again.
   let refreshThreshold: number;
   let minRefreshTime: number;
-  let refreshTimeout: NodeJS.Timer;
+  let refreshTimeout: NodeJS.Timeout;
   let fetchingPlaylist = true;
   let ended = false;
   let isStatic = false;
@@ -122,13 +158,20 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
     currSegment = null;
     if (err) {
       onError(err);
-    } else if (!fetchingPlaylist && !ended && !isStatic &&
-      requestQueue.tasks.length + requestQueue.active <= refreshThreshold) {
+    } else if (
+      !fetchingPlaylist &&
+      !ended &&
+      !isStatic &&
+      requestQueue.tasks.length + requestQueue.active <= refreshThreshold
+    ) {
       let ms = Math.max(0, minRefreshTime - (Date.now() - lastRefresh));
       fetchingPlaylist = true;
       refreshTimeout = setTimeout(refreshPlaylist, ms);
-    } else if ((ended || isStatic) &&
-      !requestQueue.tasks.length && !requestQueue.active) {
+    } else if (
+      (ended || isStatic) &&
+      !requestQueue.tasks.length &&
+      !requestQueue.active
+    ) {
       stream.end();
     }
   };
@@ -144,21 +187,30 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
     forwardEvents(currPlaylist);
     const parser = currPlaylist.pipe(new Parser(options.id));
     parser.on('starttime', (a: number) => {
-      if (starttime) { return; }
+      if (starttime) {
+        return;
+      }
       starttime = a;
       if (typeof options.begin === 'string' && begin >= 0) {
         begin += starttime;
       }
     });
-    parser.on('endlist', () => { isStatic = true; });
+    parser.on('endlist', () => {
+      isStatic = true;
+    });
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
-    let targetDuration = 0, lastDuration = 0;
-    parser.on('targetduration', (ms: number) => { targetDuration = ms; });
+    let targetDuration = 0,
+      lastDuration = 0;
+    parser.on('targetduration', (ms: number) => {
+      targetDuration = ms;
+    });
 
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
       if (!item.init) {
-        if (item.seq <= lastSeq) { return; }
+        if (item.seq <= lastSeq) {
+          return;
+        }
         lastSeq = item.seq;
       }
       begin = item.time;
@@ -166,7 +218,8 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
       addedItems.push(item);
     };
 
-    let tailedItems: TimedItem[] = [], tailedItemsDuration = 0;
+    let tailedItems: TimedItem[] = [],
+      tailedItemsDuration = 0;
     parser.on('item', (item: Item) => {
       let timedItem = { time: starttime, ...item };
       if (begin <= timedItem.time) {
@@ -175,8 +228,10 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
         tailedItems.push(timedItem);
         tailedItemsDuration += timedItem.duration;
         // Only keep the last `liveBuffer` of items.
-        while (tailedItems.length > 1 &&
-          tailedItemsDuration - tailedItems[0].duration > liveBuffer) {
+        while (
+          tailedItems.length > 1 &&
+          tailedItemsDuration - tailedItems[0].duration > liveBuffer
+        ) {
           const lastItem = tailedItems.shift() as TimedItem;
           tailedItemsDuration -= lastItem.duration;
         }
@@ -190,7 +245,9 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
       // If we are too ahead of the stream, make sure to get the
       // latest available items with a small buffer.
       if (!addedItems.length && tailedItems.length) {
-        tailedItems.forEach(item => { addItem(item); });
+        tailedItems.forEach((item) => {
+          addItem(item);
+        });
       }
 
       // Refresh the playlist when remaining segments get low.
@@ -215,7 +272,7 @@ let m3u8stream = ((playlistURL: string, options: m3u8stream.Options = {}): m3u8s
     clearTimeout(refreshTimeout);
     currPlaylist?.destroy();
     currSegment?.destroy();
-    PassThrough.prototype.end.call(stream, null);
+    PassThrough.prototype.end.apply(stream);
     return stream;
   };
 

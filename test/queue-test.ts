@@ -2,56 +2,85 @@ import { Queue, Callback } from '../dist/queue';
 import assert from 'assert';
 import sinon from 'sinon';
 
-
 describe('Create a queue', () => {
   describe('With 3 concurrency', () => {
     let clock: sinon.SinonFakeTimers;
-    before(() => { clock = sinon.useFakeTimers(); });
-    after(() => { clock.uninstall(); });
+    before(() => {
+      clock = sinon.useFakeTimers({
+        toFake: [
+          'setTimeout',
+          'clearTimeout',
+          'setInterval',
+          'clearInterval',
+          'Date',
+        ],
+      });
+    });
+    after(() => {
+      clock.uninstall();
+    });
 
-    it('Defaults to a set concurrency', done => {
+    it('Defaults to a set concurrency', (done) => {
       let maxms: number;
       let lastTask: number;
-      let q = new Queue((task: number, callback: Callback) => {
-        if (lastTask) {
-          // Make sure tasks are called in order.
-          // Even if they don't finish in order.
-          assert.equal(lastTask, task - 1);
-        }
-        lastTask = task;
-        let ms = Math.floor(Math.random() * 1000);
-        setTimeout(() => { callback(null); }, ms);
-        if (!maxms || ms > maxms) {
-          maxms = ms;
-        }
-      }, { concurrency: 3 });
+      let q = new Queue(
+        (task: number, callback: Callback) => {
+          if (lastTask) {
+            // Make sure tasks are called in order.
+            // Even if they don't finish in order.
+            assert.equal(lastTask, task - 1);
+          }
+          lastTask = task;
+          let ms = Math.floor(Math.random() * 1000);
+          setTimeout(() => {
+            callback(null);
+          }, ms);
+          if (!maxms || ms > maxms) {
+            maxms = ms;
+          }
+        },
+        { concurrency: 3 },
+      );
 
-      let total = 10, called = 0;
+      let total = 10,
+        called = 0;
       const callback = () => {
         if (++called === total) {
           done();
         }
-        process.nextTick(() => { clock.tick(maxms); });
+        process.nextTick(() => {
+          clock.tick(maxms);
+        });
       };
 
       for (let i = 0; i < total; i++) {
         q.push(i, callback);
         assert.ok(q.active <= 3);
       }
-      process.nextTick(() => { clock.tick(maxms); });
+      process.nextTick(() => {
+        clock.tick(maxms);
+      });
     });
   });
 
   describe('With 1 concurrency', () => {
-    it('Runs tasks sequentially one at a time', done => {
-      let q = new Queue((task: number, callback: Callback) => {
-        assert.equal(q.active, 1);
-        process.nextTick(() => { callback(null); });
-      }, { concurrency: 1 });
+    it('Runs tasks sequentially one at a time', (done) => {
+      let q = new Queue(
+        (task: number, callback: Callback) => {
+          assert.equal(q.active, 1);
+          process.nextTick(() => {
+            callback(null);
+          });
+        },
+        { concurrency: 1 },
+      );
 
-      let total = 5, called = 0;
+      let total = 5,
+        called = 0;
       const callback = () => {
-        if (++called === total) { done(); }
+        if (++called === total) {
+          done();
+        }
       };
       for (let i = 0; i < total; i++) {
         q.push(i, callback);
@@ -61,7 +90,7 @@ describe('Create a queue', () => {
   });
 
   describe('Call worker callback twice', () => {
-    it('Calls task callback once', done => {
+    it('Calls task callback once', (done) => {
       let q = new Queue((task: unknown, callback: Callback) => {
         // Intentionally call callback twice.
         process.nextTick(() => {
@@ -74,14 +103,17 @@ describe('Create a queue', () => {
   });
 
   describe('Kill it halfway', () => {
-    it('Does not run additional tasks', done => {
+    it('Does not run additional tasks', (done) => {
       let results: string[] = [];
-      let q = new Queue((task: string, callback: Callback) => {
-        results.push(task);
-        process.nextTick(() => {
-          callback(null);
-        });
-      }, { concurrency: 2 });
+      let q = new Queue(
+        (task: string, callback: Callback) => {
+          results.push(task);
+          process.nextTick(() => {
+            callback(null);
+          });
+        },
+        { concurrency: 2 },
+      );
       q.push('a');
       q.push('b');
       q.push('hello');

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns="urn:mpeg:DASH:schema:MPD:2011" type="static">
+  <Period>
+    <SegmentList timescale="1000">
+      <SegmentTimeline>
+        <S d="2000" />
+        <S d="2000" />
+      </SegmentTimeline>
+    </SegmentList>
+    <AdaptationSet mimeType="audio/mp4">
+      <Representation id="1">
+        <BaseURL>https://videohost.com/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+          <SegmentURL media="0002.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

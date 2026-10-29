@@ -422,14 +422,62 @@ describe('m3u8stream', () => {
 
       let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
       concat(stream, (err) => {
-        global.setTimeout = nextTick;
-        assert.ifError(err);
-        scope.done();
-        assert.deepEqual(
-          delays.map((ms) => Math.round(ms / 1000)),
-          [8, 4],
-        );
-        done();
+        try {
+          assert.ifError(err);
+          scope.done();
+          assert.deepEqual(
+            delays.map((ms) => Math.round(ms / 1000)),
+            [8, 4],
+          );
+          done();
+        } finally {
+          global.setTimeout = nextTick;
+        }
+      });
+    });
+
+    it('Reloads HLS playlist after half the target duration when refresh contains 0 segments', (done) => {
+      let nextTick = global.setTimeout;
+      let delays: number[] = [];
+      global.setTimeout = ((fn: () => void, ms: number) => {
+        delays.push(ms);
+        return nextTick(fn);
+      }) as typeof global.setTimeout;
+
+      let scope = nock('https://priv.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.1.m3u8'))
+        .get('/fileSequence2681.ts')
+        .reply(200, 'apple')
+        .get('/fileSequence2682.ts')
+        .reply(200, 'banana')
+        .get('/fileSequence2683.ts')
+        .reply(200, 'cherry')
+        .get('/playlist.m3u8')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/live-empty.m3u8'),
+        )
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/live-1.2.m3u8'))
+        .get('/fileSequence2684.ts')
+        .reply(200, 'fig')
+        .get('/fileSequence2685.ts')
+        .reply(200, 'grape');
+
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      concat(stream, (err) => {
+        try {
+          assert.ifError(err);
+          scope.done();
+          assert.deepEqual(
+            delays.map((ms) => Math.round(ms / 1000)),
+            [8, 4],
+          );
+          done();
+        } finally {
+          global.setTimeout = nextTick;
+        }
       });
     });
 
@@ -623,6 +671,53 @@ describe('m3u8stream', () => {
           ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'].join(''),
         );
         done();
+      });
+    });
+
+    it('Reloads DASH playlist after half segment duration when refresh contains 0 segments', (done) => {
+      let nextTick = global.setTimeout;
+      let delays: number[] = [];
+      global.setTimeout = ((fn: () => void, ms: number) => {
+        delays.push(ms);
+        return nextTick(fn);
+      }) as typeof global.setTimeout;
+
+      let scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/live-dash-1.1.mpd'),
+        )
+        .get('/0001.ts')
+        .reply(200, '01')
+        .get('/playlist.mpd')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/live-dash-1.2.mpd'),
+        )
+        .get('/playlist.mpd')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/live-dash-1.3.mpd'),
+        )
+        .get('/0002.ts')
+        .reply(200, '02');
+
+      let stream = m3u8stream('https://videohost.com/playlist.mpd', {
+        id: '1',
+      });
+      concat(stream, (err) => {
+        try {
+          assert.ifError(err);
+          scope.done();
+          assert.deepEqual(
+            delays.map((ms) => Math.round(ms / 1000)),
+            [2, 1],
+          );
+          done();
+        } finally {
+          global.setTimeout = nextTick;
+        }
       });
     });
   });

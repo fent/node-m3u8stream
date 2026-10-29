@@ -179,6 +179,8 @@ let m3u8stream = ((
   let currPlaylist: miniget.Stream | null;
   let lastSeq: number;
   let starttime = 0;
+  let targetDuration = 0;
+  let lastDuration = 0;
 
   const refreshPlaylist = (): void => {
     lastRefresh = Date.now();
@@ -199,8 +201,6 @@ let m3u8stream = ((
       isStatic = true;
     });
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
-    let targetDuration = 0,
-      lastDuration = 0;
     parser.on('targetduration', (ms: number) => {
       targetDuration = ms;
     });

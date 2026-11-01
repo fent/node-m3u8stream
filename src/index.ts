@@ -4,7 +4,7 @@ import m3u8Parser from './m3u8-parser';
 import DashMPDParser from './dash-mpd-parser';
 import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
-import { Item } from './parser';
+import { Item, isSet } from './parser';
 
 namespace m3u8stream {
   export interface Options {
@@ -70,7 +70,7 @@ let m3u8stream = ((
     throw TypeError(`parser '${options.parser}' not supported`);
   }
   let begin = 0;
-  if (typeof options.begin !== 'undefined') {
+  if (isSet(options.begin)) {
     begin =
       typeof options.begin === 'string'
         ? humanStr(options.begin)
@@ -114,7 +114,7 @@ let m3u8stream = ((
           Range: `bytes=${segment.range.start}-${segment.range.end}`,
         });
       }
-      let req = miniget(
+      const req = miniget(
         new URL(segment.url, playlistURL).toString(),
         reqOptions,
       );
@@ -188,6 +188,7 @@ let m3u8stream = ((
     currPlaylist.on('error', onError);
     forwardEvents(currPlaylist);
     const parser = currPlaylist.pipe(new Parser(options.id));
+    parser.on('error', onError);
     parser.on('starttime', (a: number) => {
       if (starttime) {
         return;
@@ -203,6 +204,10 @@ let m3u8stream = ((
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
     parser.on('targetduration', (ms: number) => {
       targetDuration = ms;
+    });
+    const variants: { url: string; index: number; name: string | null }[] = [];
+    parser.on('variant', (variant) => {
+      variants.push(variant);
     });
 
     let addedItems: any[] = [];
@@ -242,6 +247,27 @@ let m3u8stream = ((
 
     parser.on('end', () => {
       currPlaylist = null;
+      // This is a master playlist, follow the chosen variant stream.
+      if (variants.length) {
+        const variant =
+          options.id === undefined
+            ? variants[0]
+            : variants.find((v) => v.name === options.id) ||
+              variants.find((v) => {
+                const pathname = new URL(v.url, playlistURL).pathname;
+                const lastPart = pathname.split('/').filter(Boolean).pop();
+                return lastPart === options.id;
+              }) ||
+              variants.find((v) => `${v.index}` === options.id);
+        if (!variant) {
+          onError(new Error(`variant stream '${options.id}' not found`));
+          return;
+        }
+        playlistURL = new URL(variant.url, playlistURL).toString();
+        refreshPlaylist();
+        return;
+      }
+
       // If we are too ahead of the stream, make sure to get the
       // latest available items with a small buffer.
       if (!addedItems.length && tailedItems.length) {

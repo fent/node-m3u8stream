@@ -32,7 +32,7 @@ Creates a readable stream of binary media data. `options` can have the following
 - `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
 - `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
 - `parser` - Either "m3u8" or "dash-mpd". Defaults to guessing based on the playlist url ending in `.m3u8` or `.mpd`.
-- `id` - For playlist containing multiple media options. If not given, the first representation will be picked.
+- `id` - For playlists containing multiple media options. If not given, the first one will be picked. For DASH playlists, this is the representation `id`. For HLS master playlists, this matches a variant stream's `NAME` attribute, the last part of its URI, or otherwise its 0-based position in the playlist, e.g. `'2'`.
 
 ### Stream#end()
 
@@ -65,8 +65,6 @@ And 0ms, 0s, 0m, 0h, and together 1m1s.
 ### Limitations
 
 Currently, it does not support [encrypted media segments](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20#section-4.3.2.4). This is because the sites where this was tested on and intended for, YouTube and Twitch, don't use it.
-
-This does not parse master playlists, only media playlists. If you want to parse a master playlist to get links to media playlists, you can try the [m3u8 module](https://github.com/tedconf/node-m3u8).
 
 # Install
 

@@ -47,6 +47,33 @@ describe('m3u8 parser', () => {
     });
   });
 
+  describe('Parse a master playlist', () => {
+    it('Emits all variant streams and no segments', (done) => {
+      let filepath = path.resolve(__dirname, 'playlists/master-named.m3u8');
+      let items: Item[] = [];
+      let variants: any[] = [];
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => {
+        items.push(item);
+      });
+      parser.on('variant', (variant) => {
+        variants.push(variant);
+      });
+      parser.on('error', done);
+      let rs = fs.createReadStream(filepath, { highWaterMark: 16 });
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.equal(items.length, 0);
+        assert.deepEqual(variants, [
+          { url: 'low/low.m3u8', index: 0, name: 'low' },
+          { url: 'hi/hi.m3u8', index: 1, name: 'hi' },
+          { url: 'audio/audio.m3u8', index: 2, name: null },
+        ]);
+        done();
+      });
+    });
+  });
+
   describe('Parse segments from a live playlist', () => {
     it('Emits all segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/live-1.1.m3u8');

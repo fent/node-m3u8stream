@@ -1,5 +1,8 @@
 import { Writable } from 'stream';
 
+export const isSet = <T>(value: T | undefined): value is T =>
+  typeof value !== 'undefined';
+
 export interface Item {
   url: string;
   seq: number;

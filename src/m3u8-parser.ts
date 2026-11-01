@@ -10,6 +10,9 @@ export default class m3u8Parser extends Writable implements Parser {
   private _nextItemDuration: number | null;
   private _nextItemRange: { start: number; end: number } | null;
   private _lastItemRangeEnd: number;
+  private _expectVariantURI: boolean;
+  private _nextVariantName: string | null;
+  private _variantIndex: number;
 
   constructor() {
     super();
@@ -18,6 +21,9 @@ export default class m3u8Parser extends Writable implements Parser {
     this._nextItemDuration = null;
     this._nextItemRange = null;
     this._lastItemRangeEnd = 0;
+    this._expectVariantURI = false;
+    this._nextVariantName = null;
+    this._variantIndex = 0;
     this.on('finish', () => {
       this._parseLine(this._lastLine);
       this.emit('end');
@@ -89,8 +95,23 @@ export default class m3u8Parser extends Writable implements Parser {
         case 'EXT-X-ENDLIST':
           this.emit('endlist');
           break;
+        case 'EXT-X-STREAM-INF':
+          this._nextVariantName = this._parseAttrList(value).NAME || null;
+          this._expectVariantURI = true;
+          break;
       }
     } else if (!/^#/.test(line) && line.trim()) {
+      if (this._expectVariantURI) {
+        // This is a variant stream of a master playlist.
+        this.emit('variant', {
+          url: line.trim(),
+          index: this._variantIndex++,
+          name: this._nextVariantName,
+        });
+        this._expectVariantURI = false;
+        this._nextVariantName = null;
+        return;
+      }
       // This is a segment
       this.emit('item', {
         url: line.trim(),

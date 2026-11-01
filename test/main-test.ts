@@ -218,6 +218,168 @@ describe('m3u8stream', () => {
     });
   });
 
+  describe('Master playlist', () => {
+    const masterFile = path.resolve(__dirname, 'playlists/master-named.m3u8');
+    const mediaFile = path.resolve(__dirname, 'playlists/simple_relative.m3u8');
+    const variantScope = (variantPath: string) =>
+      nock('http://media.example.com')
+        .get('/master.m3u8')
+        .replyWithFile(200, masterFile)
+        .get(variantPath)
+        .replyWithFile(200, mediaFile)
+        .get(variantPath.replace(/[^/]+\.m3u8$/, 'first.ts'))
+        .reply(200, 'one')
+        .get(variantPath.replace(/[^/]+\.m3u8$/, 'second.ts'))
+        .reply(200, 'two')
+        .get(variantPath.replace(/[^/]+\.m3u8$/, 'third.ts'))
+        .reply(200, 'three');
+
+    it('Follows the first variant stream by default', (done) => {
+      let scope = variantScope('/low/low.m3u8');
+      let stream = m3u8stream('http://media.example.com/master.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwothree');
+        done();
+      });
+    });
+
+    describe('With `id` matching a variant name', () => {
+      it('Follows that variant stream', (done) => {
+        let scope = variantScope('/hi/hi.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: 'hi',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
+    describe('With `id` matching the last part of a variant URI', () => {
+      it('Follows that variant stream', (done) => {
+        let scope = variantScope('/audio/audio.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: 'audio.m3u8',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
+    describe('With `id` matching a variant position', () => {
+      it('Follows that variant stream', (done) => {
+        let scope = variantScope('/audio/audio.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: '2',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
+    describe('With a live master playlist', () => {
+      it('Refreshes the child media playlist as new segments appear', (done) => {
+        let masterScope = nock('https://priv.example.com')
+          .get('/master.m3u8')
+          .replyWithFile(200, masterFile);
+
+        let liveScope = nock('https://priv.example.com')
+          .get('/low/low.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/live-2.1.m3u8'),
+          )
+          .get('/fileSequence2681.ts')
+          .reply(200, 'apple')
+          .get('/fileSequence2682.ts')
+          .reply(200, 'banana')
+          .get('/fileSequence2683.ts')
+          .reply(200, 'cherry')
+          .get('/fileSequence2684.ts')
+          .reply(200, 'durango')
+          .get('/fileSequence2685.ts')
+          .reply(200, 'eggfruit')
+          .get('/fileSequence2686.ts')
+          .reply(200, 'fig')
+          .get('/fileSequence2687.ts')
+          .reply(200, 'grape')
+          .get('/fileSequence2688.ts')
+          .reply(200, 'hackberry')
+          .get('/fileSequence2689.ts')
+          .reply(200, 'imbe')
+          .get('/fileSequence2690.ts')
+          .reply(200, 'java')
+          .get('/low/low.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/live-2.2.m3u8'),
+          )
+          .get('/fileSequence2691.ts')
+          .reply(200, 'kiwi')
+          .get('/fileSequence2692.ts')
+          .reply(200, 'lime')
+          .get('/fileSequence2693.ts')
+          .reply(200, 'mango')
+          .get('/fileSequence2694.ts')
+          .reply(200, 'nectarine')
+          .get('/fileSequence2695.ts')
+          .reply(200, 'orange')
+          .get('/fileSequence2696.ts')
+          .reply(200, 'papaya')
+          .get('/fileSequence2697.ts')
+          .reply(200, 'quince')
+          .get('/fileSequence2698.ts')
+          .reply(200, 'raspberry')
+          .get('/fileSequence2699.ts')
+          .reply(200, 'strawberry')
+          .get('/fileSequence2700.ts')
+          .reply(200, 'tangerine');
+
+        let stream = m3u8stream('https://priv.example.com/master.m3u8');
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          masterScope.done();
+          liveScope.done();
+          assert.equal(body.slice(0, 15), 'applebananacher');
+          assert.ok(body.endsWith('strawberrytangerine'));
+          done();
+        });
+      });
+    });
+
+    describe('With `id` that is not found', () => {
+      it('Emits error', (done) => {
+        let scope = nock('http://media.example.com')
+          .get('/master.m3u8')
+          .replyWithFile(200, masterFile);
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: 'nope',
+        });
+        stream.on('error', (err) => {
+          scope.done();
+          assert.equal(err.message, "variant stream 'nope' not found");
+          done();
+        });
+        stream.on('end', () => {
+          throw Error('Should not emit end');
+        });
+      });
+    });
+  });
+
   describe('Live media playlist', () => {
     it('Refresh after nearing end of segment list', (done) => {
       let scope = nock('https://priv.example.com')

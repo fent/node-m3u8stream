@@ -216,6 +216,109 @@ describe('m3u8stream', () => {
         });
       });
     });
+
+    describe('With `begin` and `end` set', () => {
+      it('Clips the stream between begin and end', (done) => {
+        let scope = nock('https://twitch.tv')
+          .get('/videos/sc.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/twitch-1.1.m3u8'),
+          )
+          .get('/videos/3.ts')
+          .reply(200, 'the')
+          .get('/videos/4.ts')
+          .reply(200, 'big')
+          .get('/videos/5.ts')
+          .reply(200, 'brown');
+
+        let stream = m3u8stream('https://twitch.tv/videos/sc.m3u8', {
+          begin: '30s',
+          end: '1m',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'thebigbrown');
+          done();
+        });
+      });
+    });
+
+    describe('With `duration` set', () => {
+      it('Clips the stream to the given duration', (done) => {
+        let scope = nock('https://twitch.tv')
+          .get('/videos/sc.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/twitch-1.1.m3u8'),
+          )
+          .get('/videos/3.ts')
+          .reply(200, 'the')
+          .get('/videos/4.ts')
+          .reply(200, 'big');
+
+        let stream = m3u8stream('https://twitch.tv/videos/sc.m3u8', {
+          begin: '30s',
+          duration: '20s',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'thebig');
+          done();
+        });
+      });
+
+      it('Clips from the start when only duration is set on a dated playlist', (done) => {
+        const playlist = [
+          '#EXTM3U',
+          '#EXT-X-TARGETDURATION:5',
+          '#EXT-X-PROGRAM-DATE-TIME:2026-01-01T00:00:00.000Z',
+          '#EXTINF:5,',
+          'first.ts',
+          '#EXTINF:5,',
+          'second.ts',
+          '#EXT-X-ENDLIST',
+        ].join('\n');
+        const scope = nock('https://media.example.com')
+          .get('/playlist.m3u8')
+          .reply(200, playlist)
+          .get('/first.ts')
+          .reply(200, 'first');
+        const stream = m3u8stream('https://media.example.com/playlist.m3u8', {
+          duration: '5s',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'first');
+          done();
+        });
+      });
+    });
+
+    describe('With both `end` and `duration` set', () => {
+      it('Throws a TypeError', () => {
+        assert.throws(() => {
+          m3u8stream('https://twitch.tv/videos/sc.m3u8', {
+            end: '1m',
+            duration: '30s',
+          });
+        }, /Options `end` and `duration` cannot be used together/);
+      });
+    });
+
+    describe('With `begin` >= `end`', () => {
+      it('Throws a RangeError', () => {
+        assert.throws(() => {
+          m3u8stream('https://twitch.tv/videos/sc.m3u8', {
+            begin: '1m',
+            end: '30s',
+          });
+        }, /Option `begin` must be before `end`/);
+      });
+    });
   });
 
   describe('Master playlist', () => {
@@ -687,6 +790,56 @@ describe('m3u8stream', () => {
             done();
           });
         });
+
+        it('Clips live stream when `duration` is set with absolute `begin`', (done) => {
+          let starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: starttime + 13713,
+            duration: 9977,
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
+
+        it('Clips live stream when absolute `end` is set with absolute `begin`', (done) => {
+          let starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: starttime + 13713,
+            end: starttime + 23690,
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
       });
 
       describe('With `begin` set using relative format', () => {
@@ -736,6 +889,130 @@ describe('m3u8stream', () => {
               ),
             );
             done();
+          });
+        });
+
+        it('Clips live stream when `duration` is set', (done) => {
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: '10s',
+            duration: '10s',
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
+
+        it('Clips live stream when `end` is set using relative format', (done) => {
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: '10s',
+            end: '20s',
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
+
+        it('Clips live stream when relative `begin` and absolute `end` are mixed', (done) => {
+          let starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: '13713ms',
+            end: starttime + 23690,
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
+
+        it('Clips live stream when absolute `begin` and relative `end` are mixed', (done) => {
+          let starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            )
+            .get('/fileSequence0003.ts')
+            .reply(200, '03')
+            .get('/fileSequence0004.ts')
+            .reply(200, '04');
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: starttime + 13713,
+            end: '23690ms',
+          });
+          concat(stream, (err, body) => {
+            assert.ifError(err);
+            scope.done();
+            assert.equal(body, '0304');
+            done();
+          });
+        });
+
+        it('Emits RangeError when mixed relative `begin` >= absolute `end`', (done) => {
+          let starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+          let scope = nock('https://yt.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+            );
+
+          let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+            begin: '30s',
+            end: starttime + 10000,
+          });
+          stream.on('error', (err) => {
+            if (!(err instanceof RangeError)) {
+              return;
+            }
+            scope.done();
+            assert.equal(err.message, 'Option `begin` must be before `end`');
+            done();
+          });
+          stream.on('end', () => {
+            throw Error('Should not emit end');
           });
         });
       });

@@ -9,6 +9,8 @@ import { Item, isSet } from './parser';
 namespace m3u8stream {
   export interface Options {
     begin?: number | string;
+    end?: number | string;
+    duration?: number | string;
     liveBuffer?: number;
     chunkReadahead?: number;
     highWaterMark?: number;
@@ -69,12 +71,40 @@ let m3u8stream = ((
   if (!Parser) {
     throw TypeError(`parser '${options.parser}' not supported`);
   }
+  if (isSet(options.end) && isSet(options.duration)) {
+    throw TypeError('Options `end` and `duration` cannot be used together');
+  }
+
+  const isRelativeTime = (time?: number | string): boolean =>
+    typeof time === 'string';
+  const isAbsoluteTime = (time?: number | string): boolean =>
+    typeof time === 'number';
+
   let begin = 0;
   if (isSet(options.begin)) {
-    begin =
-      typeof options.begin === 'string'
-        ? humanStr(options.begin)
-        : Math.max(options.begin - liveBuffer, 0);
+    begin = isRelativeTime(options.begin)
+      ? humanStr(options.begin)
+      : (options.begin as number);
+  }
+  let end = Infinity;
+  if (isSet(options.end)) {
+    end = isRelativeTime(options.end)
+      ? humanStr(options.end)
+      : (options.end as number);
+  } else if (isSet(options.duration)) {
+    end =
+      begin +
+      (isRelativeTime(options.duration)
+        ? humanStr(options.duration)
+        : (options.duration as number));
+  }
+  const sameTimeBasis =
+    isSet(options.duration) ||
+    (isRelativeTime(options.end) && !isSet(options.begin)) ||
+    (isRelativeTime(options.begin) && isRelativeTime(options.end)) ||
+    (isAbsoluteTime(options.begin) && isAbsoluteTime(options.end));
+  if (sameTimeBasis && begin >= end) {
+    throw RangeError('Option `begin` must be before `end`');
   }
 
   const forwardEvents = (req: miniget.Stream) => {
@@ -151,7 +181,7 @@ let m3u8stream = ((
   let refreshTimeout: NodeJS.Timeout;
   let fetchingPlaylist = true;
   let ended = false;
-  let isStatic = false;
+  let noMoreItems = false;
   let lastRefresh: number;
 
   const onQueuedEnd = (err: Error | null): void => {
@@ -161,14 +191,14 @@ let m3u8stream = ((
     } else if (
       !fetchingPlaylist &&
       !ended &&
-      !isStatic &&
+      !noMoreItems &&
       requestQueue.tasks.length + requestQueue.active <= refreshThreshold
     ) {
       let ms = Math.max(0, minRefreshTime - (Date.now() - lastRefresh));
       fetchingPlaylist = true;
       refreshTimeout = setTimeout(refreshPlaylist, ms);
     } else if (
-      (ended || isStatic) &&
+      (ended || noMoreItems) &&
       !requestQueue.tasks.length &&
       !requestQueue.active
     ) {
@@ -194,12 +224,26 @@ let m3u8stream = ((
         return;
       }
       starttime = a;
-      if (typeof options.begin === 'string' && begin >= 0) {
+
+      if (isSet(options.duration) && !isSet(options.begin)) {
         begin += starttime;
+        end += starttime;
+      }
+      if (isRelativeTime(options.begin) && begin >= 0) {
+        begin += starttime;
+        if (isSet(options.duration)) {
+          end += starttime;
+        }
+      }
+      if (isRelativeTime(options.end)) {
+        end += starttime;
+      }
+      if (begin >= end) {
+        onError(new RangeError('Option `begin` must be before `end`'));
       }
     });
     parser.on('endlist', () => {
-      isStatic = true;
+      noMoreItems = true;
     });
     parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
     parser.on('targetduration', (ms: number) => {
@@ -227,6 +271,10 @@ let m3u8stream = ((
       tailedItemsDuration = 0;
     parser.on('item', (item: Item) => {
       let timedItem = { time: starttime, ...item };
+      if (timedItem.time >= end) {
+        noMoreItems = true;
+        return;
+      }
       if (begin <= timedItem.time) {
         addItem(timedItem);
       } else {

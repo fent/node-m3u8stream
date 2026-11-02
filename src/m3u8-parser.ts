@@ -1,5 +1,7 @@
 import { Writable } from 'stream';
-import { Parser } from './parser';
+import { Parser, KeyInfo } from './parser';
+
+const X_KEY_METHODS = ['NONE', 'AES-128', 'SAMPLE-AES'];
 
 /**
  * A very simple m3u8 playlist file parser that detects tags and segments.
@@ -13,6 +15,8 @@ export default class m3u8Parser extends Writable implements Parser {
   private _expectVariantURI: boolean;
   private _nextVariantName: string | null;
   private _variantIndex: number;
+  private _currentKey: KeyInfo | null;
+  private _unsupportedKey: boolean;
 
   constructor() {
     super();
@@ -24,6 +28,7 @@ export default class m3u8Parser extends Writable implements Parser {
     this._expectVariantURI = false;
     this._nextVariantName = null;
     this._variantIndex = 0;
+    this._currentKey = null;
     this.on('finish', () => {
       this._parseLine(this._lastLine);
       this.emit('end');
@@ -32,12 +37,14 @@ export default class m3u8Parser extends Writable implements Parser {
 
   private _parseAttrList(value: string) {
     let attrs: { [key: string]: string } = {};
-    let regex = /([A-Z0-9-]+)=(?:"([^"]*?)"|([^,]*?))/g;
+    let quoted: { [key: string]: boolean } = {};
+    let regex = /([A-Z0-9-]+)=(?:"([^"]*)"|([^,]*))/g;
     let match;
     while ((match = regex.exec(value)) !== null) {
-      attrs[match[1]] = match[2] || match[3];
+      attrs[match[1]] = match[2] ?? match[3];
+      quoted[match[1]] = typeof match[2] === 'string';
     }
-    return attrs;
+    return { attrs, quoted };
   }
 
   private _parseRange(value: string) {
@@ -48,6 +55,14 @@ export default class m3u8Parser extends Writable implements Parser {
     let range = { start, end };
     this._lastItemRangeEnd = range.end;
     return range;
+  }
+
+  private _canUseKey(): boolean {
+    if (!this._currentKey && this._unsupportedKey) {
+      this.destroy(new Error('`EXT-X-KEY` uses an unsupported `KEYFORMAT`'));
+      return false;
+    }
+    return true;
   }
 
   _parseLine(line: string): void {
@@ -66,12 +81,121 @@ export default class m3u8Parser extends Writable implements Parser {
         case 'EXT-X-TARGETDURATION':
           this.emit('targetduration', parseFloat(value) * 1000);
           break;
+        case 'EXT-X-KEY': {
+          let { attrs, quoted } = this._parseAttrList(value);
+          if (!attrs.METHOD) {
+            this.destroy(
+              new Error(
+                '`EXT-X-KEY` found without required attribute `METHOD`',
+              ),
+            );
+            return;
+          }
+          if (!X_KEY_METHODS.includes(attrs.METHOD)) {
+            this.destroy(
+              new Error('`EXT-X-KEY` found with invalid `METHOD` value'),
+            );
+            return;
+          }
+          if (attrs.METHOD !== 'NONE') {
+            if (!attrs.URI) {
+              this.destroy(
+                new Error('`EXT-X-KEY` found without required attribute `URI`'),
+              );
+              return;
+            }
+            if (!quoted.URI) {
+              this.destroy(
+                new Error('`EXT-X-KEY` attribute `URI` must be quoted'),
+              );
+              return;
+            }
+            if ('KEYFORMAT' in attrs && !quoted.KEYFORMAT) {
+              this.destroy(
+                new Error('`EXT-X-KEY` attribute `KEYFORMAT` must be quoted'),
+              );
+              return;
+            }
+            if ('KEYFORMATVERSIONS' in attrs && !quoted.KEYFORMATVERSIONS) {
+              this.destroy(
+                new Error(
+                  '`EXT-X-KEY` attribute `KEYFORMATVERSIONS` must be quoted',
+                ),
+              );
+              return;
+            }
+          }
+          if (attrs.IV && !/^0x[0-9a-f]{32}$/i.test(attrs.IV)) {
+            this.destroy(
+              new Error('`EXT-X-KEY` found with invalid `IV` attribute format'),
+            );
+            return;
+          }
+          if (attrs.METHOD === 'NONE') {
+            if (Object.keys(attrs).length > 1) {
+              this.destroy(
+                new Error(
+                  '`EXT-X-KEY` with `METHOD=NONE` must not contain other attributes',
+                ),
+              );
+              return;
+            }
+            this._currentKey = null;
+            this._unsupportedKey = false;
+            break;
+          }
+          attrs.KEYFORMAT = attrs.KEYFORMAT ?? 'identity';
+          if ('KEYFORMATVERSIONS' in attrs) {
+            if (!/^[1-9]\d*(?:\/[1-9]\d*)*$/.test(attrs.KEYFORMATVERSIONS)) {
+              this.destroy(
+                new Error(
+                  '`EXT-X-KEY` found with invalid `KEYFORMATVERSIONS` attribute format',
+                ),
+              );
+              return;
+            }
+          }
+          if (attrs.KEYFORMAT !== 'identity') {
+            this._unsupportedKey = true;
+            break;
+          }
+          if ('KEYFORMATVERSIONS' in attrs && attrs.KEYFORMATVERSIONS !== '1') {
+            this.destroy(
+              new Error(
+                '`EXT-X-KEY` with `KEYFORMAT="identity"` requires `KEYFORMATVERSIONS="1"`',
+              ),
+            );
+            return;
+          }
+          this._unsupportedKey = false;
+          this._currentKey = {
+            method: attrs.METHOD as 'AES-128' | 'SAMPLE-AES',
+            uri: attrs.URI,
+            iv: attrs.IV,
+            keyformat: attrs.KEYFORMAT,
+            ...(attrs.KEYFORMATVERSIONS
+              ? { keyformatversions: attrs.KEYFORMATVERSIONS }
+              : {}),
+          };
+          break;
+        }
         case 'EXT-X-MAP': {
-          let attrs = this._parseAttrList(value);
+          let attrs = this._parseAttrList(value).attrs;
           if (!attrs.URI) {
             this.destroy(
               new Error('`EXT-X-MAP` found without required attribute `URI`'),
             );
+            return;
+          }
+          if (this._currentKey && !this._currentKey.iv) {
+            this.destroy(
+              new Error(
+                '`EXT-X-KEY` applying to `EXT-X-MAP` requires an explicit `IV` attribute',
+              ),
+            );
+            return;
+          }
+          if (!this._canUseKey()) {
             return;
           }
           this.emit('item', {
@@ -79,7 +203,8 @@ export default class m3u8Parser extends Writable implements Parser {
             seq: this._seq,
             init: true,
             duration: 0,
-            range: this._parseRange(attrs.BYTERANGE),
+            range: this._parseRange(attrs.BYTERANGE) ?? undefined,
+            key: this._currentKey ?? undefined,
           });
           break;
         }
@@ -96,7 +221,7 @@ export default class m3u8Parser extends Writable implements Parser {
           this.emit('endlist');
           break;
         case 'EXT-X-STREAM-INF':
-          this._nextVariantName = this._parseAttrList(value).NAME || null;
+          this._nextVariantName = this._parseAttrList(value).attrs.NAME || null;
           this._expectVariantURI = true;
           break;
       }
@@ -113,11 +238,15 @@ export default class m3u8Parser extends Writable implements Parser {
         return;
       }
       // This is a segment
+      if (!this._canUseKey()) {
+        return;
+      }
       this.emit('item', {
         url: line.trim(),
         seq: this._seq++,
-        duration: this._nextItemDuration,
-        range: this._nextItemRange,
+        duration: this._nextItemDuration as number,
+        range: this._nextItemRange ?? undefined,
+        key: this._currentKey ?? undefined,
       });
       this._nextItemRange = null;
     }

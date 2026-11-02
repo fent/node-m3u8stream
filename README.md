@@ -64,10 +64,6 @@ And 0ms, 0s, 0m, 0h, and together 1m1s.
 
 - `time` - A string (or number) giving the user-readable input data
 
-### Limitations
-
-Currently, it does not support [encrypted media segments](https://tools.ietf.org/html/draft-pantos-http-live-streaming-20#section-4.3.2.4). This is because the sites where this was tested on and intended for, YouTube and Twitch, don't use it.
-
 # Install
 
     npm install m3u8stream

@@ -1,9 +1,10 @@
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import miniget from 'miniget';
 import m3u8Parser from './m3u8-parser';
 import DashMPDParser from './dash-mpd-parser';
 import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
+import KeyManager from './key-manager';
 import { Item, isSet } from './parser';
 
 namespace m3u8stream {
@@ -120,9 +121,9 @@ let m3u8stream = ((
     }
   };
 
-  let currSegment: miniget.Stream | null;
+  let currSegment: Readable | null;
   const streamQueue = new Queue(
-    (req: miniget.Stream, callback): void => {
+    (req: Readable, callback): void => {
       currSegment = req;
       // Count the size manually, since the `content-length` header is not
       // always there.
@@ -133,6 +134,8 @@ let m3u8stream = ((
     },
     { concurrency: 1 },
   );
+
+  const keyManager = new KeyManager(requestOptions);
 
   let segmentNumber = 0;
   let downloaded = 0;
@@ -148,9 +151,20 @@ let m3u8stream = ((
         new URL(segment.url, playlistURL).toString(),
         reqOptions,
       );
-      req.on('error', callback);
       forwardEvents(req);
-      streamQueue.push(req, (_, size) => {
+
+      const segmentStream = new PassThrough();
+      segmentStream.on('error', () => undefined);
+
+      const destroyWithError = (err: Error) => {
+        req.destroy();
+        segmentStream.destroy(err);
+        callback(err);
+      };
+
+      req.on('error', destroyWithError);
+
+      streamQueue.push(segmentStream, (_, size) => {
         downloaded += +size;
         stream.emit(
           'progress',
@@ -165,6 +179,29 @@ let m3u8stream = ((
         );
         callback(null);
       });
+
+      keyManager
+        .getDecipher(segment.key, playlistURL, segment.seq)
+        .then((decipher) => {
+          if (ended) {
+            req.destroy();
+            segmentStream.destroy();
+            return;
+          }
+          if (decipher) {
+            decipher.on('error', destroyWithError);
+            decipher.on('close', () => req.destroy());
+            req.pipe(decipher).pipe(segmentStream);
+          } else {
+            req.pipe(segmentStream);
+          }
+        })
+        .catch((err) => {
+          if (ended) {
+            return;
+          }
+          destroyWithError(err);
+        });
     },
     { concurrency: chunkReadahead },
   );
@@ -346,6 +383,7 @@ let m3u8stream = ((
     clearTimeout(refreshTimeout);
     currPlaylist?.destroy();
     currSegment?.destroy();
+    keyManager.clear();
     PassThrough.prototype.end.apply(stream);
     return stream;
   };

@@ -3,6 +3,14 @@ import { Writable } from 'stream';
 export const isSet = <T>(value: T | undefined): value is T =>
   typeof value !== 'undefined';
 
+export interface KeyInfo {
+  method: 'NONE' | 'AES-128' | 'SAMPLE-AES';
+  uri?: string;
+  iv?: string;
+  keyformat?: string;
+  keyformatversions?: string;
+}
+
 export interface Item {
   url: string;
   seq: number;
@@ -10,6 +18,7 @@ export interface Item {
   time?: number;
   range?: { start: number; end: number };
   init?: boolean;
+  key?: KeyInfo;
 }
 
 export interface Parser extends Writable {

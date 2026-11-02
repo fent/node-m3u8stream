@@ -1,10 +1,11 @@
 import m3u8stream from '../dist/index';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import assert from 'assert';
 import { PassThrough } from 'stream';
 import nock from 'nock';
-import { spy } from 'sinon';
+import { spy, stub } from 'sinon';
 import { humanStr } from '../dist/parse-time';
 
 nock.disableNetConnect();
@@ -1207,6 +1208,542 @@ describe('m3u8stream', () => {
           { url: 'main.mp4', num: 5, size: 80, duration: 4969 },
         ]);
         assert.equal(body, fs.readFileSync(filename, 'utf8'));
+        done();
+      });
+    });
+  });
+
+  describe('Encrypted media playlist', () => {
+    const key = Buffer.from('0123456789abcdef0123456789abcdef', 'hex');
+    const iv = Buffer.from('bf9840dc7d7fa163301a6c38844d6239', 'hex');
+
+    const encrypt = (text: string, keyBuf: Buffer, ivBuf: Buffer): Buffer => {
+      const cipher = crypto.createCipheriv('aes-128-cbc', keyBuf, ivBuf);
+      return Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    };
+
+    it('Decrypts AES-128 segments using specified IV', (done) => {
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .replyWithFile(200, path.resolve(__dirname, 'playlists/x-key.m3u8'))
+        .get('/sig.php')
+        .reply(200, key, { 'Cache-Control': 'max-age=3600' })
+        .get('/main1.mp4')
+        .reply(200, encrypt('one', key, iv))
+        .get('/main2.mp4')
+        .reply(200, encrypt('two', key, iv))
+        .get('/main3.mp4')
+        .reply(200, encrypt('three', key, iv))
+        .get('/main4.mp4')
+        .reply(200, encrypt('four', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwothreefour');
+        done();
+      });
+    });
+
+    it('Decrypts segments using sequence number IV when IV attribute is omitted', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'seg1.ts',
+        '#EXTINF:5,',
+        'seg2.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      const iv1 = Buffer.alloc(16);
+      iv1.writeBigUInt64BE(BigInt(1), 8);
+      const iv2 = Buffer.alloc(16);
+      iv2.writeBigUInt64BE(BigInt(2), 8);
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key, { 'Cache-Control': 'max-age=3600' })
+        .get('/seg1.ts')
+        .reply(200, encrypt('seq_one', key, iv1))
+        .get('/seg2.ts')
+        .reply(200, encrypt('seq_two', key, iv2));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'seq_oneseq_two');
+        done();
+      });
+    });
+
+    it('Resolves relative key URI against variant playlist URL when following master playlist', (done) => {
+      const masterPlaylist = [
+        '#EXTM3U',
+        '#EXT-X-STREAM-INF:BANDWIDTH=1280000',
+        'variants/sub/prog.m3u8',
+      ].join('\n');
+
+      const variantPlaylist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'seg1.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      const iv1 = Buffer.alloc(16);
+      iv1.writeBigUInt64BE(BigInt(1), 8);
+
+      let scope = nock('https://media.example.com')
+        .get('/master.m3u8')
+        .reply(200, masterPlaylist)
+        .get('/variants/sub/prog.m3u8')
+        .reply(200, variantPlaylist)
+        .get('/variants/sub/sig.php')
+        .reply(200, key)
+        .get('/variants/sub/seg1.ts')
+        .reply(200, encrypt('variant_seg', key, iv1));
+
+      let stream = m3u8stream('https://media.example.com/master.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'variant_seg');
+        done();
+      });
+    });
+
+    it('Emits error when METHOD is SAMPLE-AES', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=SAMPLE-AES,URI="./sig.php"',
+        '#EXTINF:5,',
+        'sample.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sample.ts')
+        .reply(200, 'sample_data');
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      stream.on('error', (err) => {
+        assert.equal(err.message, '`SAMPLE-AES` encryption is not supported');
+        scope.done();
+        done();
+      });
+    });
+
+    it('Emits error when only an unsupported KEYFORMAT key is available', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",KEYFORMAT="com.apple.streamingkeydelivery"',
+        '#EXTINF:5,',
+        'sample.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist);
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      stream.on('error', (err) => {
+        assert.match(err.message, /unsupported `KEYFORMAT`/);
+        scope.done();
+        done();
+      });
+    });
+
+    it('Uses an identity key when an unsupported key is also declared', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./fairplay.php",KEYFORMAT="com.apple.streamingkeydelivery"',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'sample.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key)
+        .get('/sample.ts')
+        .reply(200, encrypt('sample_data', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'sample_data');
+        done();
+      });
+    });
+
+    const assertStreamError = (
+      stream: m3u8stream.Stream,
+      scope: nock.Scope,
+      expected: string | RegExp | null,
+      done: (err?: any) => void,
+    ) => {
+      let called = false;
+      stream.on('error', (err) => {
+        if (!called) {
+          called = true;
+          if (expected instanceof RegExp) {
+            assert.match(err.message, expected);
+          } else if (typeof expected === 'string') {
+            assert.equal(err.message, expected);
+          } else {
+            assert.ok(err);
+          }
+          scope.done();
+          done();
+        }
+      });
+    };
+
+    it('Emits error when key request fails', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(404, 'not found')
+        .get('/main1.mp4')
+        .reply(200, encrypt('one', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      assertStreamError(stream, scope, /Status code: 404/, done);
+    });
+
+    it('Emits error when key is not 16 octets', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, Buffer.alloc(8))
+        .get('/main1.mp4')
+        .reply(200, encrypt('one', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      assertStreamError(
+        stream,
+        scope,
+        'Invalid key length: expected 16 octets, got 8',
+        done,
+      );
+    });
+
+    it('Emits error when decipher fails to decrypt segment', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key)
+        .get('/main1.mp4')
+        .reply(200, Buffer.from('corrupted ciphertext that fails cbc'));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      assertStreamError(stream, scope, null, done);
+    });
+
+    it('Emits error when encrypted segment request errors', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key)
+        .get('/main1.mp4')
+        .replyWithError('segment download failed');
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      assertStreamError(stream, scope, 'segment download failed', done);
+    });
+
+    it('Preserves segment playback order when key resolution is delayed', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./slow-key.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'seg1.mp4',
+        '#EXT-X-KEY:METHOD=NONE',
+        '#EXTINF:5,',
+        'seg2.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/slow-key.php')
+        .delay(50)
+        .reply(200, key, { 'Cache-Control': 'max-age=3600' })
+        .get('/seg1.mp4')
+        .reply(200, encrypt('first', key, iv))
+        .get('/seg2.mp4')
+        .reply(200, 'second');
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'firstsecond');
+        done();
+      });
+    });
+
+    const testKeyCaching = (
+      keyPath: string,
+      headers: { [key: string]: string } | undefined,
+      expectKeyRequests: number,
+      done: (err?: any) => void,
+    ) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        `#EXT-X-KEY:METHOD=AES-128,URI=".${keyPath}",IV=0xbf9840dc7d7fa163301a6c38844d6239`,
+        '#EXTINF:5,',
+        'seg1.mp4',
+        '#EXTINF:5,',
+        'seg2.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist);
+
+      for (let i = 0; i < expectKeyRequests; i++) {
+        if (headers) {
+          scope = scope.get(keyPath).reply(200, key, headers);
+        } else {
+          scope = scope.get(keyPath).reply(200, key);
+        }
+      }
+
+      scope = scope
+        .get('/seg1.mp4')
+        .reply(200, encrypt('one', key, iv))
+        .get('/seg2.mp4')
+        .reply(200, encrypt('two', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8', {
+        chunkReadahead: 1,
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwo');
+        done();
+      });
+    };
+
+    it('Refetches key for subsequent segments if response lacks Cache-Control/Expires', (done) => {
+      testKeyCaching('/uncached-key.php', undefined, 2, done);
+    });
+
+    it('Caches key for subsequent segments if response contains Expires header', (done) => {
+      testKeyCaching(
+        '/expires-key.php',
+        { Expires: 'Wed, 21 Oct 2030 07:28:00 GMT' },
+        1,
+        done,
+      );
+    });
+
+    it('Refetches key if response contains Cache-Control: no-cache', (done) => {
+      testKeyCaching(
+        '/nocache-key.php',
+        { 'Cache-Control': 'no-cache' },
+        2,
+        done,
+      );
+    });
+
+    it('Refetches key if response contains Cache-Control: max-age=0', (done) => {
+      testKeyCaching(
+        '/max-age-zero-key.php',
+        { 'Cache-Control': 'max-age=0' },
+        2,
+        done,
+      );
+    });
+
+    it('Refetches key if response contains expired Expires header', (done) => {
+      testKeyCaching(
+        '/expired-key.php',
+        { Expires: 'Wed, 21 Oct 2020 07:28:00 GMT' },
+        2,
+        done,
+      );
+    });
+
+    it('Shares in-flight key request across concurrent segments', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./concurrent-key.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'seg1.mp4',
+        '#EXTINF:5,',
+        'seg2.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/concurrent-key.php')
+        .delay(30)
+        .reply(200, key, { 'Cache-Control': 'no-cache' })
+        .get('/seg1.mp4')
+        .reply(200, encrypt('one', key, iv))
+        .get('/seg2.mp4')
+        .reply(200, encrypt('two', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8', {
+        chunkReadahead: 2,
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwo');
+        done();
+      });
+    });
+
+    it('Evicts expired key from cache and refetches', (done) => {
+      let now = 1700000000000;
+      const clock = stub(Date, 'now').callsFake(() => now);
+
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./ttl-key.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'seg1.mp4',
+        '#EXTINF:5,',
+        'seg2.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/ttl-key.php')
+        .reply(200, key, { 'Cache-Control': 'max-age=60' })
+        .get('/seg1.mp4')
+        .reply(200, encrypt('one', key, iv))
+        .get('/ttl-key.php')
+        .reply(200, key, { 'Cache-Control': 'max-age=60' })
+        .get('/seg2.mp4')
+        .reply(200, encrypt('two', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8', {
+        chunkReadahead: 1,
+      });
+      stream.on('progress', (p) => {
+        if (p.num === 1) {
+          now += 120 * 1000;
+        }
+      });
+      concat(stream, (err, body) => {
+        clock.restore();
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwo');
+        done();
+      });
+    });
+
+    it('Destroys request when stream ends before decipher resolves', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .delay(50)
+        .reply(200, key)
+        .get('/main1.mp4')
+        .reply(200, encrypt('one', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      stream.on('request', (req: any) => {
+        if (req.path === '/main1.mp4') {
+          setTimeout(() => {
+            stream.end();
+          }, 10);
+        }
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        assert.equal(body, '');
+        scope.done();
         done();
       });
     });

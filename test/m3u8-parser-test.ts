@@ -807,4 +807,53 @@ describe('m3u8 parser', () => {
       });
     });
   });
+
+  describe('Malformed playlist missing EXTINF or with invalid duration', () => {
+    it('Emits duration 0 when EXTINF is missing or invalid', (done) => {
+      let items: Item[] = [];
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => {
+        items.push(item);
+      });
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          {
+            url: 'first.ts',
+            seq: 0,
+            duration: 0,
+            range: undefined,
+            key: undefined,
+          },
+          {
+            url: 'second.ts',
+            seq: 1,
+            duration: 5000,
+            range: undefined,
+            key: undefined,
+          },
+          {
+            url: 'third.ts',
+            seq: 2,
+            duration: 0,
+            range: undefined,
+            key: undefined,
+          },
+        ]);
+        done();
+      });
+      parser.write(
+        [
+          '#EXTM3U',
+          'first.ts',
+          '#EXTINF:5,',
+          'second.ts',
+          '#EXTINF:invalid,',
+          'third.ts',
+          '#EXT-X-ENDLIST',
+        ].join('\n'),
+      );
+      parser.end();
+    });
+  });
 });

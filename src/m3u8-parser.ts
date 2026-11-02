@@ -212,11 +212,13 @@ export default class m3u8Parser extends Writable implements Parser {
           this._nextItemRange = this._parseRange(value);
           break;
         }
-        case 'EXTINF':
-          this._nextItemDuration = Math.round(
-            parseFloat(value.split(',')[0]) * 1000,
-          );
+        case 'EXTINF': {
+          const parsed = parseFloat(value.split(',')[0]);
+          this._nextItemDuration = isNaN(parsed)
+            ? 0
+            : Math.round(parsed * 1000);
           break;
+        }
         case 'EXT-X-ENDLIST':
           this.emit('endlist');
           break;
@@ -244,10 +246,11 @@ export default class m3u8Parser extends Writable implements Parser {
       this.emit('item', {
         url: line.trim(),
         seq: this._seq++,
-        duration: this._nextItemDuration as number,
+        duration: this._nextItemDuration || 0,
         range: this._nextItemRange ?? undefined,
         key: this._currentKey ?? undefined,
       });
+      this._nextItemDuration = null;
       this._nextItemRange = null;
     }
   }

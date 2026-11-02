@@ -394,6 +394,90 @@ describe('m3u8stream', () => {
       });
     });
 
+    describe('With `id` matching quality keywords', () => {
+      it('Follows highest bandwidth variant stream with "highest"', (done) => {
+        let scope = variantScope('/hi/hi.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: 'highest',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+
+      it('Follows lowest bandwidth variant stream with "lowest"', (done) => {
+        let scope = variantScope('/audio/audio.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: 'lowest',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
+    describe('With `id` matching resolution shorthand', () => {
+      it('Follows matching resolution with "1080p"', (done) => {
+        let scope = variantScope('/hi/hi.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: '1080p',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+
+      it('Follows matching resolution with "720p"', (done) => {
+        let scope = variantScope('/low/low.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: '720p',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+
+      it('Follows matching resolution with "1920x1080"', (done) => {
+        let scope = variantScope('/hi/hi.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: '1920x1080',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
+    describe('With `id` as a custom predicate function', () => {
+      it('Follows matching variant stream', (done) => {
+        let scope = variantScope('/hi/hi.m3u8');
+        let stream = m3u8stream('http://media.example.com/master.m3u8', {
+          id: (v) => v.frameRate === 60,
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'onetwothree');
+          done();
+        });
+      });
+    });
+
     describe('With a live master playlist', () => {
       it('Refreshes the child media playlist as new segments appear', (done) => {
         let masterScope = nock('https://priv.example.com')

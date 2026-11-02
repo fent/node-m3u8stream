@@ -189,6 +189,172 @@ describe('dash MPD parser', () => {
         let rs = fs.createReadStream(filepath);
         rs.pipe(parser);
       });
+
+      it('Emits error with predicate function representation not found', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let fn = (v: any) => v.height === 1080;
+        const parser = new DashMPDParser(fn);
+        parser.on('error', (err) => {
+          assert.equal(err.message, `Representation '${fn}' not found`);
+          done();
+        });
+        fs.createReadStream(filepath).pipe(parser);
+      });
+
+      it('Emits error on malformed XML', (done) => {
+        const parser = new DashMPDParser();
+        parser.on('error', (err) => {
+          assert.ok(err);
+          done();
+        });
+        parser.end('<mpd foo="bar');
+      });
+    });
+
+    describe('With quality keywords', () => {
+      it('Selects representation with highest bandwidth using "highest"', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser('highest');
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.equal(items.length, 10);
+          assert.equal(items[0].url, 'https://videohost.com/134/0001.ts');
+          done();
+        });
+      });
+
+      it('Selects representation with lowest bandwidth using "lowest"', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser('lowest');
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          // Init + 10 segments
+          assert.equal(items.length, 11);
+          assert.equal(items[0].url, 'https://videohost.com/140/0000.ts');
+          done();
+        });
+      });
+    });
+
+    describe('With resolution shorthand', () => {
+      it('Selects representation matching "360p"', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser('360p');
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.equal(items.length, 10);
+          assert.equal(items[0].url, 'https://videohost.com/134/0001.ts');
+          done();
+        });
+      });
+
+      it('Selects representation matching "240p"', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser('240p');
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.equal(items.length, 10);
+          assert.equal(items[0].url, 'https://videohost.com/133/0001.ts');
+          done();
+        });
+      });
+
+      it('Selects representation matching "640x360"', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser('640x360');
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.equal(items.length, 10);
+          assert.equal(items[0].url, 'https://videohost.com/134/0001.ts');
+          done();
+        });
+      });
+    });
+
+    describe('With custom predicate function', () => {
+      it('Selects matching representation', (done) => {
+        let filepath = path.resolve(
+          __dirname,
+          'playlists/multi-representation.mpd',
+        );
+        let items: Item[] = [];
+        const parser = new DashMPDParser((v) => v.height === 240);
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        let rs = fs.createReadStream(filepath);
+        rs.pipe(parser);
+        rs.on('end', () => {
+          assert.equal(items.length, 10);
+          assert.equal(items[0].url, 'https://videohost.com/133/0001.ts');
+          done();
+        });
+      });
+
+      it('Selects matching representation with fractional frameRate', (done) => {
+        const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000" width="1920" height="1080" frameRate="30000/1001">
+        <BaseURL>https://videohost.com/1/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+        const parser = new DashMPDParser(
+          (v) => typeof v.frameRate === 'number' && v.frameRate > 29.9,
+        );
+        const items: Item[] = [];
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        parser.on('end', () => {
+          assert.equal(items.length, 1);
+          assert.equal(items[0].url, 'https://videohost.com/1/0001.ts');
+          done();
+        });
+        parser.end(Buffer.from(xml));
+      });
     });
   });
 

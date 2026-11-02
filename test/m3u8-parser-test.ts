@@ -68,12 +68,59 @@ describe('m3u8 parser', () => {
       rs.on('end', () => {
         assert.equal(items.length, 0);
         assert.deepEqual(variants, [
-          { url: 'low/low.m3u8', index: 0, name: 'low' },
-          { url: 'hi/hi.m3u8', index: 1, name: 'hi' },
-          { url: 'audio/audio.m3u8', index: 2, name: null },
+          {
+            url: 'low/low.m3u8',
+            index: 0,
+            name: 'low',
+            bandwidth: 1280000,
+            resolution: '1280x720',
+            width: 1280,
+            height: 720,
+            codecs: undefined,
+            frameRate: 30,
+          },
+          {
+            url: 'hi/hi.m3u8',
+            index: 1,
+            name: 'hi',
+            bandwidth: 2560000,
+            resolution: '1920x1080',
+            width: 1920,
+            height: 1080,
+            codecs: undefined,
+            frameRate: 60,
+          },
+          {
+            url: 'audio/audio.m3u8',
+            index: 2,
+            name: undefined,
+            bandwidth: 65000,
+            resolution: undefined,
+            width: undefined,
+            height: undefined,
+            codecs: 'mp4a.40.2',
+            frameRate: undefined,
+          },
         ]);
         done();
       });
+    });
+
+    it('Parses variant stream with missing bandwidth and attributes', (done) => {
+      const playlist =
+        '#EXTM3U\n#EXT-X-STREAM-INF:CODECS="mp4a.40.2"\naudio.m3u8\n';
+      const parser = new m3u8Parser();
+      const variants: any[] = [];
+      parser.on('variant', (v) => variants.push(v));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(variants.length, 1);
+        assert.strictEqual(variants[0].bandwidth, undefined);
+        assert.strictEqual(variants[0].resolution, undefined);
+        assert.strictEqual(variants[0].frameRate, undefined);
+        done();
+      });
+      parser.end(playlist);
     });
   });
 

@@ -5,7 +5,13 @@ import DashMPDParser from './dash-mpd-parser';
 import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
 import KeyManager from './key-manager';
-import { Item, isSet } from './parser';
+import {
+  isSet,
+  Item,
+  selectVariant,
+  Variant as ParserVariant,
+  VariantFilter as ParserVariantFilter,
+} from './parser';
 
 namespace m3u8stream {
   export interface Options {
@@ -17,8 +23,11 @@ namespace m3u8stream {
     highWaterMark?: number;
     requestOptions?: miniget.Options;
     parser?: 'm3u8' | 'dash-mpd';
-    id?: string;
+    id?: VariantFilter;
   }
+
+  export type Variant = ParserVariant;
+  export type VariantFilter = ParserVariantFilter;
 
   export interface Progress {
     num: number;
@@ -286,8 +295,8 @@ let m3u8stream = ((
     parser.on('targetduration', (ms: number) => {
       targetDuration = ms;
     });
-    const variants: { url: string; index: number; name: string | null }[] = [];
-    parser.on('variant', (variant) => {
+    const variants: m3u8stream.Variant[] = [];
+    parser.on('variant', (variant: m3u8stream.Variant) => {
       variants.push(variant);
     });
 
@@ -334,21 +343,12 @@ let m3u8stream = ((
       currPlaylist = null;
       // This is a master playlist, follow the chosen variant stream.
       if (variants.length) {
-        const variant =
-          options.id === undefined
-            ? variants[0]
-            : variants.find((v) => v.name === options.id) ||
-              variants.find((v) => {
-                const pathname = new URL(v.url, playlistURL).pathname;
-                const lastPart = pathname.split('/').filter(Boolean).pop();
-                return lastPart === options.id;
-              }) ||
-              variants.find((v) => `${v.index}` === options.id);
+        const variant = selectVariant(variants, options.id);
         if (!variant) {
           onError(new Error(`variant stream '${options.id}' not found`));
           return;
         }
-        playlistURL = new URL(variant.url, playlistURL).toString();
+        playlistURL = new URL(variant.url as string, playlistURL).toString();
         refreshPlaylist();
         return;
       }

@@ -13,7 +13,7 @@ export default class m3u8Parser extends Writable implements Parser {
   private _nextItemRange: { start: number; end: number } | null;
   private _lastItemRangeEnd: number;
   private _expectVariantURI: boolean;
-  private _nextVariantName: string | null;
+  private _nextVariantAttrs: { [key: string]: string } | null;
   private _variantIndex: number;
   private _currentKey: KeyInfo | null;
   private _unsupportedKey: boolean;
@@ -26,7 +26,7 @@ export default class m3u8Parser extends Writable implements Parser {
     this._nextItemRange = null;
     this._lastItemRangeEnd = 0;
     this._expectVariantURI = false;
-    this._nextVariantName = null;
+    this._nextVariantAttrs = null;
     this._variantIndex = 0;
     this._currentKey = null;
     this.on('finish', () => {
@@ -223,20 +223,41 @@ export default class m3u8Parser extends Writable implements Parser {
           this.emit('endlist');
           break;
         case 'EXT-X-STREAM-INF':
-          this._nextVariantName = this._parseAttrList(value).attrs.NAME || null;
+          this._nextVariantAttrs = this._parseAttrList(value).attrs;
           this._expectVariantURI = true;
           break;
       }
     } else if (!/^#/.test(line) && line.trim()) {
       if (this._expectVariantURI) {
         // This is a variant stream of a master playlist.
+        const attrs = this._nextVariantAttrs as { [key: string]: string };
+        const bandwidth = attrs.BANDWIDTH
+          ? parseInt(attrs.BANDWIDTH, 10)
+          : undefined;
+        let width: number | undefined;
+        let height: number | undefined;
+        const resolution = attrs.RESOLUTION;
+        if (resolution) {
+          const [w, h] = resolution.split(/x/i).map((n) => parseInt(n, 10));
+          width = w;
+          height = h;
+        }
+        const frameRate = attrs['FRAME-RATE']
+          ? parseFloat(attrs['FRAME-RATE'])
+          : undefined;
         this.emit('variant', {
           url: line.trim(),
           index: this._variantIndex++,
-          name: this._nextVariantName,
+          name: attrs.NAME || undefined,
+          bandwidth,
+          resolution,
+          width,
+          height,
+          codecs: attrs.CODECS,
+          frameRate,
         });
         this._expectVariantURI = false;
-        this._nextVariantName = null;
+        this._nextVariantAttrs = null;
         return;
       }
       // This is a segment

@@ -75,6 +75,64 @@ describe('m3u8stream', () => {
       });
     });
 
+    it('Resolves relative segments against redirected playlist URL', (done) => {
+      let redirectScope = nock('http://media.example.com')
+        .get('/redirect.m3u8')
+        .reply(302, '', {
+          Location: 'http://cdn.example.com/hls/sub/playlist.m3u8',
+        });
+      let cdnScope = nock('http://cdn.example.com')
+        .get('/hls/sub/playlist.m3u8')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/simple_relative.m3u8'),
+        )
+        .get('/hls/sub/first.ts')
+        .reply(200, 'one')
+        .get('/hls/sub/second.ts')
+        .reply(200, 'two')
+        .get('/hls/sub/third.ts')
+        .reply(200, 'three');
+      let stream = m3u8stream('http://media.example.com/redirect.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        redirectScope.done();
+        cdnScope.done();
+        assert.equal(body, 'onetwothree');
+        done();
+      });
+    });
+
+    it('Follows a relative redirect Location', (done) => {
+      let redirectScope = nock('http://media.example.com')
+        .get('/relative-redirect.m3u8')
+        .reply(302, '', {
+          Location: '/hls/sub/playlist.m3u8',
+        });
+      let cdnScope = nock('http://media.example.com')
+        .get('/hls/sub/playlist.m3u8')
+        .replyWithFile(
+          200,
+          path.resolve(__dirname, 'playlists/simple_relative.m3u8'),
+        )
+        .get('/hls/sub/first.ts')
+        .reply(200, 'one')
+        .get('/hls/sub/second.ts')
+        .reply(200, 'two')
+        .get('/hls/sub/third.ts')
+        .reply(200, 'three');
+      let stream = m3u8stream(
+        'http://media.example.com/relative-redirect.m3u8',
+      );
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        redirectScope.done();
+        cdnScope.done();
+        assert.equal(body, 'onetwothree');
+        done();
+      });
+    });
+
     it('Tracks segment download progress', (done) => {
       let scope = nock('http://media.example.com')
         .get('/playlist.m3u8')

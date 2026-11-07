@@ -262,6 +262,9 @@ let m3u8stream = ((
     lastRefresh = Date.now();
     currPlaylist = miniget(playlistURL, requestOptions);
     currPlaylist.on('error', onError);
+    currPlaylist.on('redirect', (redirectURL: string) => {
+      playlistURL = new URL(redirectURL, playlistURL).toString();
+    });
     forwardEvents(currPlaylist);
     const parser = currPlaylist.pipe(new Parser(options.id));
     parser.on('error', onError);

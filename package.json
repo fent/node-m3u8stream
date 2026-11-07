@@ -31,7 +31,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "miniget": "^4.2.2",
+    "miniget": "^4.2.6",
     "sax": "^1.2.4"
   },
   "devDependencies": {

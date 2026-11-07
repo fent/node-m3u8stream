@@ -144,11 +144,11 @@ export default class DashMPDParser extends Writable implements Parser {
     let treeLevel = 0;
     let periodStart = 0;
 
-    const tmpl = (str: string): string => {
+    const tmpl = (str: string, time?: number): string => {
       const context: { [key: string]: string | number | undefined } = {
         RepresentationID: targetID,
         Number: seq,
-        Time: currtime,
+        Time: time,
       };
       return str.replace(/\$(\w+)\$/g, (m, key) => `${context[key]}`);
     };
@@ -241,7 +241,6 @@ export default class DashMPDParser extends Writable implements Parser {
               seq: seq++,
               duration: segmentDuration,
             });
-            currtime += segmentDuration;
           }
           break;
       }
@@ -276,19 +275,20 @@ export default class DashMPDParser extends Writable implements Parser {
                 duration: 0,
               });
             }
-            for (let { duration: itemDuration, repeat, time } of timeline) {
-              itemDuration = (itemDuration / timescale) * 1000;
-              repeat = repeat || 1;
-              currtime = time || currtime;
-              for (let i = 0; i < repeat; i++) {
+            let segTime = 0;
+            for (let { duration: timelineDuration, repeat, time } of timeline) {
+              const segmentDuration = (timelineDuration / timescale) * 1000;
+              const count = (repeat || 0) + 1;
+              segTime = time || segTime;
+              for (let i = 0; i < count; i++) {
                 this.emit('item', {
                   url:
                     baseURL.filter((s) => !!s).join('') +
-                    tmpl(segmentTemplate.media),
+                    tmpl(segmentTemplate.media, segTime),
                   seq: seq++,
-                  duration: itemDuration,
+                  duration: segmentDuration,
                 });
-                currtime += itemDuration;
+                segTime += timelineDuration;
               }
             }
           }

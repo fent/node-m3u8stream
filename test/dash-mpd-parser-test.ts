@@ -429,12 +429,12 @@ describe('dash MPD parser', () => {
           },
           {
             url: 'media/audio/und/seg-4.m4f',
-            duration: (45056 / timescale) * 1000,
+            duration: (44032 / timescale) * 1000,
             seq: 4,
           },
           {
             url: 'media/audio/und/seg-5.m4f',
-            duration: (44032 / timescale) * 1000,
+            duration: (45056 / timescale) * 1000,
             seq: 5,
           },
           {
@@ -459,7 +459,7 @@ describe('dash MPD parser', () => {
           },
           {
             url: 'media/audio/und/seg-10.m4f',
-            duration: (45056 / timescale) * 1000,
+            duration: (44032 / timescale) * 1000,
             seq: 10,
           },
           {
@@ -469,7 +469,7 @@ describe('dash MPD parser', () => {
           },
           {
             url: 'media/audio/und/seg-12.m4f',
-            duration: (44032 / timescale) * 1000,
+            duration: (45056 / timescale) * 1000,
             seq: 12,
           },
           {
@@ -489,8 +489,23 @@ describe('dash MPD parser', () => {
           },
           {
             url: 'media/audio/und/seg-16.m4f',
-            duration: (3904 / timescale) * 1000,
+            duration: (44032 / timescale) * 1000,
             seq: 16,
+          },
+          {
+            url: 'media/audio/und/seg-17.m4f',
+            duration: (44032 / timescale) * 1000,
+            seq: 17,
+          },
+          {
+            url: 'media/audio/und/seg-18.m4f',
+            duration: (44032 / timescale) * 1000,
+            seq: 18,
+          },
+          {
+            url: 'media/audio/und/seg-19.m4f',
+            duration: (3904 / timescale) * 1000,
+            seq: 19,
           },
         ]);
         done();
@@ -538,6 +553,11 @@ describe('dash MPD parser', () => {
               url: 'audio/und/seg-3.m4f',
               duration: (2000 / timescale) * 1000,
               seq: 3,
+            },
+            {
+              url: 'audio/und/seg-4.m4f',
+              duration: (2000 / timescale) * 1000,
+              seq: 4,
             },
           ]);
           done();
@@ -615,6 +635,35 @@ describe('dash MPD parser', () => {
             ]);
             done();
           });
+      });
+
+      it('Substitutes $Time$ in unscaled timescale units across repeats', (done) => {
+        const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="audio/mp4">
+      <Representation id="audio" bandwidth="128000">
+        <SegmentTemplate timescale="48000" media="seg-$Time$.m4s">
+          <SegmentTimeline>
+            <S t="48000" d="96000" r="1" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+        const parser = new DashMPDParser();
+        const items: Item[] = [];
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        parser.on('end', () => {
+          assert.deepEqual(items, [
+            { url: 'seg-48000.m4s', duration: 2000, seq: 0 },
+            { url: 'seg-144000.m4s', duration: 2000, seq: 1 },
+          ]);
+          done();
+        });
+        parser.end(Buffer.from(xml));
       });
     });
   });

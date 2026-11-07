@@ -570,11 +570,14 @@ describe('dash MPD parser', () => {
         let filepath = path.resolve(__dirname, 'playlists/facebook.mpd');
         const parser = new DashMPDParser();
         let items: Item[] = [];
+        let targetDuration = 0;
+        parser.on('targetduration', (ms) => (targetDuration = ms));
         parser.on('item', (item) => items.push(item));
         parser.on('error', done);
         fs.createReadStream(filepath)
           .pipe(parser)
           .on('end', () => {
+            assert.equal(targetDuration, 1000);
             assert.deepEqual(items, [
               {
                 url: '../live-md-v/122643152223588_0-init.m4v',
@@ -699,6 +702,36 @@ describe('dash MPD parser', () => {
             },
             { url: 'seg-500000-00007.m4s', duration: 2000, seq: 7 },
             { url: 'seg-500000-00008.m4s', duration: 2000, seq: 8 },
+          ]);
+          done();
+        });
+        parser.end(Buffer.from(xml));
+      });
+
+      it('Generates segments from <SegmentTemplate duration> without <SegmentTimeline>', (done) => {
+        const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT5S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="v1" bandwidth="500000">
+        <SegmentTemplate
+          timescale="1000"
+          duration="2000"
+          startNumber="1"
+          media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+        const parser = new DashMPDParser();
+        const items: Item[] = [];
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        parser.on('end', () => {
+          assert.deepEqual(items, [
+            { url: 'seg-1.m4s', duration: 2000, seq: 1 },
+            { url: 'seg-2.m4s', duration: 2000, seq: 2 },
+            { url: 'seg-3.m4s', duration: 2000, seq: 3 },
           ]);
           done();
         });

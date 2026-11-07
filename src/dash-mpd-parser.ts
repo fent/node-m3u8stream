@@ -143,6 +143,8 @@ export default class DashMPDParser extends Writable implements Parser {
     let gotSegments = false;
     let treeLevel = 0;
     let periodStart = 0;
+    let periodDuration = 0;
+    let mpdDuration = 0;
 
     const tmpl = (str: string, time?: number): string => {
       const context: { [key: string]: string | number | undefined } = {
@@ -169,6 +171,15 @@ export default class DashMPDParser extends Writable implements Parser {
                 node.attributes.availabilitystarttime as string,
               ).getTime()
             : 0;
+          mpdDuration = durationStr(
+            node.attributes.mediapresentationduration as string,
+          );
+          if (node.attributes.minimumupdateperiod) {
+            this.emit(
+              'targetduration',
+              durationStr(node.attributes.minimumupdateperiod as string),
+            );
+          }
           break;
         case 'period':
           // Reset everything on <Period> tag.
@@ -179,6 +190,8 @@ export default class DashMPDParser extends Writable implements Parser {
           baseURL = [];
           treeLevel = 0;
           periodStart = durationStr(node.attributes.start as string) || 0;
+          periodDuration =
+            durationStr(node.attributes.duration as string) || mpdDuration;
           break;
         case 'segmentlist':
           seq = parseInt(node.attributes.startnumber as string, 10) || seq;
@@ -198,6 +211,8 @@ export default class DashMPDParser extends Writable implements Parser {
           seq = parseInt(node.attributes.startnumber as string, 10) || seq;
           timescale =
             parseInt(node.attributes.timescale as string, 10) || timescale;
+          duration =
+            parseInt(node.attributes.duration as string, 10) || duration;
           break;
         case 'segmenttimeline':
         case 'baseurl':
@@ -270,6 +285,20 @@ export default class DashMPDParser extends Writable implements Parser {
           break;
         case 'representation':
           treeLevel--;
+          if (
+            getSegments &&
+            segmentTemplate &&
+            !timeline.length &&
+            duration &&
+            periodDuration
+          ) {
+            timeline.push({
+              duration,
+              repeat:
+                Math.ceil(periodDuration / ((duration / timescale) * 1000)) - 1,
+              time: 0,
+            });
+          }
           if (getSegments && segmentTemplate && timeline.length) {
             gotSegments = true;
             if (segmentTemplate.initialization) {

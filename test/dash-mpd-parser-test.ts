@@ -665,6 +665,45 @@ describe('dash MPD parser', () => {
         });
         parser.end(Buffer.from(xml));
       });
+
+      it('Supports $Bandwidth$, $$, and %0[width]d format specifiers', (done) => {
+        const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="v1" bandwidth="500000">
+        <SegmentTemplate
+          timescale="1000"
+          startNumber="7"
+          initialization="$$init-$RepresentationID$-$Bandwidth$.mp4"
+          media="seg-$Bandwidth$-$Number%05d$.m4s">
+          <SegmentTimeline>
+            <S d="2000" r="1" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+        const parser = new DashMPDParser();
+        const items: Item[] = [];
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        parser.on('end', () => {
+          assert.deepEqual(items, [
+            {
+              url: '$init-v1-500000.mp4',
+              duration: 0,
+              seq: 7,
+              init: true,
+            },
+            { url: 'seg-500000-00007.m4s', duration: 2000, seq: 7 },
+            { url: 'seg-500000-00008.m4s', duration: 2000, seq: 8 },
+          ]);
+          done();
+        });
+        parser.end(Buffer.from(xml));
+      });
     });
   });
 });

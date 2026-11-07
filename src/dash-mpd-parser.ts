@@ -147,10 +147,17 @@ export default class DashMPDParser extends Writable implements Parser {
     const tmpl = (str: string, time?: number): string => {
       const context: { [key: string]: string | number | undefined } = {
         RepresentationID: targetID,
+        Bandwidth: chosen.bandwidth,
         Number: seq,
         Time: time,
       };
-      return str.replace(/\$(\w+)\$/g, (m, key) => `${context[key]}`);
+      return str.replace(/\$(?:(\w+)(?:%0(\d+)d)?)?\$/g, (m, key, width) => {
+        if (!key) {
+          return '$';
+        }
+        const val = `${context[key]}`;
+        return width ? val.padStart(parseInt(width, 10), '0') : val;
+      });
     };
 
     const segmentParser = sax.parser(false, { lowercase: true });

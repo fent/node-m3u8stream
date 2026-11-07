@@ -1114,6 +1114,12 @@ describe('m3u8stream', () => {
           });
           stream.end();
         });
+
+        it('Destroys stream right away with stream.destroy()', (done) => {
+          let stream = m3u8stream('https://whatever.com/playlist.m3u8');
+          stream.on('close', done);
+          stream.destroy();
+        });
       });
 
       describe('In the middle of the segments list', () => {
@@ -1149,6 +1155,41 @@ describe('m3u8stream', () => {
               body,
               ['apple', 'banana', 'cherry', 'durango', 'whatever'].join(''),
             );
+            done();
+          });
+        });
+
+        it('Cleans up in-flight requests when destroyed with stream.destroy()', (done) => {
+          let scope = nock('https://priv.example.com')
+            .get('/playlist.m3u8')
+            .replyWithFile(
+              200,
+              path.resolve(__dirname, 'playlists/live-2.1.m3u8'),
+            )
+            .get('/fileSequence2681.ts')
+            .reply(200, 'apple')
+            .get('/fileSequence2682.ts')
+            .delay(50)
+            .reply(200, 'banana')
+            .get('/fileSequence2683.ts')
+            .delay(50)
+            .reply(200, 'cherry');
+          let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+            chunkReadahead: 3,
+          });
+          let body = '';
+          stream.setEncoding('utf8');
+          stream.on('data', (chunk: string) => {
+            body += chunk;
+          });
+          stream.on('progress', ({ num }) => {
+            if (num === 1) {
+              stream.destroy();
+            }
+          });
+          stream.on('close', () => {
+            scope.done();
+            assert.equal(body, 'apple');
             done();
           });
         });

@@ -164,6 +164,7 @@ let m3u8stream = ((
 
       const segmentStream = new PassThrough();
       segmentStream.on('error', () => undefined);
+      segmentStream.on('close', () => req.destroy());
 
       const destroyWithError = (err: Error) => {
         req.destroy();
@@ -199,7 +200,6 @@ let m3u8stream = ((
           }
           if (decipher) {
             decipher.on('error', destroyWithError);
-            decipher.on('close', () => req.destroy());
             req.pipe(decipher).pipe(segmentStream);
           } else {
             req.pipe(segmentStream);
@@ -376,14 +376,29 @@ let m3u8stream = ((
   };
   refreshPlaylist();
 
-  stream.end = () => {
+  const cleanup = (): void => {
     ended = true;
+    for (const task of streamQueue.tasks) {
+      task.item.destroy();
+    }
     streamQueue.die();
     requestQueue.die();
     clearTimeout(refreshTimeout);
     currPlaylist?.destroy();
     currSegment?.destroy();
     keyManager.clear();
+  };
+
+  stream._destroy = (
+    err: Error | null,
+    callback: (error?: Error | null) => void,
+  ): void => {
+    cleanup();
+    callback(err);
+  };
+
+  stream.end = () => {
+    cleanup();
     PassThrough.prototype.end.apply(stream);
     return stream;
   };

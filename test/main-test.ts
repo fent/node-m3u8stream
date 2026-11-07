@@ -889,6 +889,52 @@ describe('m3u8stream', () => {
       });
     });
 
+    it('Deduplicates unchanged EXT-X-MAP initialization segment across refreshes', (done) => {
+      const liveMap1 = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:1',
+        '#EXT-X-MAP:URI="init.mp4"',
+        '#EXTINF:5,',
+        'seg1.m4s',
+        '#EXTINF:5,',
+        'seg2.m4s',
+      ].join('\n');
+      const liveMap2 = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-MEDIA-SEQUENCE:2',
+        '#EXT-X-MAP:URI="init.mp4"',
+        '#EXTINF:5,',
+        'seg2.m4s',
+        '#EXTINF:5,',
+        'seg3.m4s',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://priv.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, liveMap1)
+        .get('/init.mp4')
+        .reply(200, '[init]')
+        .get('/seg1.m4s')
+        .reply(200, 'one')
+        .get('/seg2.m4s')
+        .reply(200, 'two')
+        .get('/playlist.m3u8')
+        .reply(200, liveMap2)
+        .get('/seg3.m4s')
+        .reply(200, 'three');
+
+      let stream = m3u8stream('https://priv.example.com/playlist.m3u8');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, '[init]onetwothree');
+        done();
+      });
+    });
+
     describe('With dated segments', () => {
       describe('With `begin` set to now', () => {
         it('Starts stream on segment that matches `begin`', (done) => {

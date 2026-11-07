@@ -254,6 +254,7 @@ let m3u8stream = ((
 
   let currPlaylist: miniget.Stream | null;
   let lastSeq: number;
+  let lastInit: string;
   let starttime = 0;
   let targetDuration = 0;
   let lastDuration = 0;
@@ -305,7 +306,15 @@ let m3u8stream = ((
 
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
-      if (!item.init) {
+      if (item.init) {
+        const initKey = item.range
+          ? `${item.url}@${item.range.start}-${item.range.end}`
+          : item.url;
+        if (initKey === lastInit) {
+          return;
+        }
+        lastInit = initKey;
+      } else {
         if (item.seq <= lastSeq) {
           return;
         }

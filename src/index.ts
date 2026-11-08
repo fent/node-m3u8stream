@@ -6,8 +6,8 @@ import { Callback, Queue } from './queue';
 import { humanStr } from './parse-time';
 import KeyManager from './key-manager';
 import {
-  isSet,
   Item,
+  isSet,
   selectVariant,
   Variant as ParserVariant,
   VariantFilter as ParserVariantFilter,
@@ -85,34 +85,40 @@ let m3u8stream = ((
     throw TypeError('Options `end` and `duration` cannot be used together');
   }
 
+  const isLive = options.begin === 'live';
+  const applyLiveBuffer = (time: number): number =>
+    isLive ? Math.max(time - liveBuffer, 0) : time;
   const isRelativeTime = (time?: number | string): boolean =>
-    typeof time === 'string';
+    typeof time === 'string' && time !== 'live';
   const isAbsoluteTime = (time?: number | string): boolean =>
     typeof time === 'number';
 
-  let begin = 0;
-  if (isSet(options.begin)) {
+  let begin = isLive ? Infinity : 0;
+  if (isSet(options.begin) && !isLive) {
     begin = isRelativeTime(options.begin)
       ? humanStr(options.begin)
-      : (options.begin as number);
+      : applyLiveBuffer(options.begin as number);
   }
+  const durationMs = isSet(options.duration)
+    ? isRelativeTime(options.duration)
+      ? humanStr(options.duration)
+      : (options.duration as number)
+    : undefined;
+
   let end = Infinity;
   if (isSet(options.end)) {
     end = isRelativeTime(options.end)
       ? humanStr(options.end)
-      : (options.end as number);
-  } else if (isSet(options.duration)) {
-    end =
-      begin +
-      (isRelativeTime(options.duration)
-        ? humanStr(options.duration)
-        : (options.duration as number));
+      : applyLiveBuffer(options.end as number);
+  } else if (isSet(durationMs) && !isLive) {
+    end = begin + durationMs;
   }
   const sameTimeBasis =
-    isSet(options.duration) ||
-    (isRelativeTime(options.end) && !isSet(options.begin)) ||
-    (isRelativeTime(options.begin) && isRelativeTime(options.end)) ||
-    (isAbsoluteTime(options.begin) && isAbsoluteTime(options.end));
+    !isLive &&
+    (isSet(options.duration) ||
+      (isRelativeTime(options.end) && !isSet(options.begin)) ||
+      (isRelativeTime(options.begin) && isRelativeTime(options.end)) ||
+      (isAbsoluteTime(options.begin) && isAbsoluteTime(options.end)));
   if (sameTimeBasis && begin >= end) {
     throw RangeError('Option `begin` must be before `end`');
   }
@@ -275,7 +281,7 @@ let m3u8stream = ((
       }
       starttime = a;
 
-      if (isSet(options.duration) && !isSet(options.begin)) {
+      if (isSet(durationMs) && !isSet(options.begin)) {
         begin += starttime;
         end += starttime;
       }
@@ -288,7 +294,7 @@ let m3u8stream = ((
       if (isRelativeTime(options.end)) {
         end += starttime;
       }
-      if (begin >= end) {
+      if (!isLive && begin >= end) {
         onError(new RangeError('Option `begin` must be before `end`'));
       }
     });
@@ -319,6 +325,13 @@ let m3u8stream = ((
           return;
         }
         lastSeq = item.seq;
+      }
+      if (isLive && isSet(durationMs) && end === Infinity) {
+        end = item.time + durationMs;
+      }
+      if (item.time >= end) {
+        noMoreItems = true;
+        return;
       }
       begin = item.time;
       requestQueue.push(item, onQueuedEnd);

@@ -1207,6 +1207,129 @@ describe('m3u8stream', () => {
       });
     });
 
+    describe('With `begin` set to "live"', () => {
+      it('Starts stream on live edge within liveBuffer for undated segments', (done) => {
+        let scope = nock('https://priv.example.com')
+          .get('/playlist.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/live-2.1.m3u8'),
+          )
+          .get('/fileSequence2688.ts')
+          .reply(200, 'hackberry')
+          .get('/fileSequence2689.ts')
+          .reply(200, 'imbe')
+          .get('/fileSequence2690.ts')
+          .reply(200, 'java')
+          .get('/playlist.m3u8')
+          .reply(200, '#EXTM3U\n#EXT-X-ENDLIST\n');
+
+        let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+          begin: 'live',
+          liveBuffer: 20000,
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'hackberryimbejava');
+          done();
+        });
+      });
+
+      it('Starts stream on live edge within liveBuffer for dated segments', (done) => {
+        let scope = nock('https://yt.com')
+          .get('/playlist.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+          )
+          .get('/fileSequence0006.ts')
+          .reply(200, '06')
+          .get('/fileSequence0007.ts')
+          .reply(200, '07')
+          .get('/fileSequence0008.ts')
+          .reply(200, '08')
+          .get('/playlist.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/youtube-live-1.2.m3u8'),
+          )
+          .get('/fileSequence0009.ts')
+          .reply(200, '09')
+          .get('/fileSequence0010.ts')
+          .reply(200, '10')
+          .get('/fileSequence0011.ts')
+          .reply(200, '11')
+          .get('/fileSequence0012.ts')
+          .reply(200, '12');
+
+        let stream = m3u8stream('https://yt.com/playlist.m3u8', {
+          begin: 'live',
+          liveBuffer: 15000,
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, '06070809101112');
+          done();
+        });
+      });
+
+      it('Clips live stream when `duration` is set with begin "live"', (done) => {
+        let scope = nock('https://priv.example.com')
+          .get('/playlist.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/live-2.1.m3u8'),
+          )
+          .get('/fileSequence2688.ts')
+          .reply(200, 'hackberry')
+          .get('/fileSequence2689.ts')
+          .reply(200, 'imbe');
+
+        let stream = m3u8stream('https://priv.example.com/playlist.m3u8', {
+          begin: 'live',
+          liveBuffer: 20000,
+          duration: '15s',
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, 'hackberryimbe');
+          done();
+        });
+      });
+
+      it('Clips live edge to an absolute end within liveBuffer', (done) => {
+        const starttime = new Date('2018-06-12T22:34:06.340+00:00').getTime();
+        const scope = nock('https://yt.com')
+          .get('/playlist.m3u8')
+          .replyWithFile(
+            200,
+            path.resolve(__dirname, 'playlists/youtube-live-1.1.m3u8'),
+          )
+          .get('/fileSequence0001.ts')
+          .reply(200, '01')
+          .get('/fileSequence0002.ts')
+          .reply(200, '02')
+          .get('/fileSequence0003.ts')
+          .reply(200, '03')
+          .get('/fileSequence0004.ts')
+          .reply(200, '04');
+        const stream = m3u8stream('https://yt.com/playlist.m3u8', {
+          begin: 'live',
+          liveBuffer: 20000,
+          end: starttime + 23690 + 20000,
+        });
+        concat(stream, (err, body) => {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body, '01020304');
+          done();
+        });
+      });
+    });
+
     describe('Destroy stream', () => {
       describe('Right away', () => {
         it('Ends stream right away with no data', (done) => {

@@ -26,7 +26,7 @@ m3u8stream('http://somesite.com/link/to/the/playlist.m3u8').pipe(
 
 Creates a readable stream of binary media data. `options` can have the following
 
-- `begin` - Where to begin playing the video. Accepts an absolute unix timestamp or date and a relative time in the formats `1:23:45.123` and `1m2s`.
+- `begin` - Where to begin playing the video. Accepts an absolute unix timestamp or date, a relative time in the formats `1:23:45.123` and `1m2s`, or `"live"` to begin at the live edge.
 - `end` - Where to stop downloading the video. Accepts an absolute unix timestamp or date and a relative time in the formats `1:23:45.123` and `1m2s`. Cannot be used together with `duration`.
 - `duration` - How much of the video to download from `begin`. Accepts a duration in milliseconds or human-readable format like `1m30s`. Cannot be used together with `end`.
 - `liveBuffer` - How much buffer in milliseconds to have for live streams. Default is `20000`.

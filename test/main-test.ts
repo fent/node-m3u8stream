@@ -1389,6 +1389,43 @@ describe('m3u8stream', () => {
         }
       });
     });
+
+    it('Makes ranged requests for DASH segments with mediaRange and range', (done) => {
+      const mpdXml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>video.mp4</BaseURL>
+        <SegmentList>
+          <Initialization range="0-3" />
+          <SegmentURL mediaRange="4-7" />
+          <SegmentURL mediaRange="8-11" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      let scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .reply(200, mpdXml)
+        .get('/video.mp4')
+        .matchHeader('Range', 'bytes=0-3')
+        .reply(206, 'init')
+        .get('/video.mp4')
+        .matchHeader('Range', 'bytes=4-7')
+        .reply(206, 'seg1')
+        .get('/video.mp4')
+        .matchHeader('Range', 'bytes=8-11')
+        .reply(206, 'seg2');
+      let stream = m3u8stream('https://videohost.com/playlist.mpd');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'initseg1seg2');
+        done();
+      });
+    });
   });
 
   describe('m3u8 playlist with ranges', () => {

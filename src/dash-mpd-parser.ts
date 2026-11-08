@@ -35,6 +35,16 @@ const resolveURI = (bases: string[], target: string): string => {
   return result.join('');
 };
 
+const parseByteRange = (
+  rangeStr?: string,
+): { start: number; end: number } | null => {
+  if (!rangeStr) {
+    return null;
+  }
+  const [start, end] = rangeStr.split('-').map((n) => parseInt(n, 10));
+  return { start, end };
+};
+
 /**
  * A wrapper around sax that emits segments.
  */
@@ -277,11 +287,16 @@ export default class DashMPDParser extends Writable implements Parser {
           break;
         case 'initialization':
           if (getSegments) {
+            const range = parseByteRange(node.attributes.range as string);
             this.emit('item', {
-              url: resolveURI(baseURL, node.attributes.sourceurl as string),
+              url: resolveURI(
+                baseURL,
+                (node.attributes.sourceurl as string) || '',
+              ),
               seq: seq,
               init: true,
               duration: 0,
+              ...(range ? { range } : {}),
             });
           }
           break;
@@ -291,10 +306,12 @@ export default class DashMPDParser extends Writable implements Parser {
             let tl = timeline.shift();
             let segmentDuration =
               ((tl?.duration || duration) / timescale) * 1000;
+            const range = parseByteRange(node.attributes.mediarange as string);
             this.emit('item', {
-              url: resolveURI(baseURL, node.attributes.media as string),
+              url: resolveURI(baseURL, (node.attributes.media as string) || ''),
               seq: seq++,
               duration: segmentDuration,
+              ...(range ? { range } : {}),
             });
           }
           break;

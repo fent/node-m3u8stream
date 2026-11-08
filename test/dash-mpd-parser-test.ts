@@ -940,5 +940,52 @@ describe('dash MPD parser', () => {
       });
       parser.end(Buffer.from(xml));
     });
+
+    it('Emits byte ranges for <Initialization range> and <SegmentURL mediaRange>', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>https://videohost.com/video.mp4</BaseURL>
+        <SegmentList>
+          <Initialization range="0-833" />
+          <SegmentURL mediaRange="834-50000" />
+          <SegmentURL mediaRange="50001-100000" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video.mp4',
+            seq: 0,
+            init: true,
+            duration: 0,
+            range: { start: 0, end: 833 },
+          },
+          {
+            url: 'https://videohost.com/video.mp4',
+            seq: 0,
+            duration: 0,
+            range: { start: 834, end: 50000 },
+          },
+          {
+            url: 'https://videohost.com/video.mp4',
+            seq: 1,
+            duration: 0,
+            range: { start: 50001, end: 100000 },
+          },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
   });
 });

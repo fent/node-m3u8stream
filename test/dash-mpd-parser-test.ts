@@ -739,4 +739,206 @@ describe('dash MPD parser', () => {
       });
     });
   });
+
+  describe('<BaseURL> scoping and hierarchy', () => {
+    it('Preserves manifest-level <BaseURL> across <Period>', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <BaseURL>https://videohost.com/</BaseURL>
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>video/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, 'https://videohost.com/video/0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Does not leak sibling <Representation> <BaseURL> into subsequent representations', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <BaseURL>https://videohost.com/</BaseURL>
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="500000">
+        <BaseURL>rep1/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="rep1-0001.ts" />
+        </SegmentList>
+      </Representation>
+      <Representation id="2" bandwidth="1000000">
+        <SegmentList>
+          <SegmentURL media="rep2-0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser('2');
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, 'https://videohost.com/rep2-0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Includes Representation-level <BaseURL> when generating segments from <SegmentTemplate>', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT4S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>https://videohost.com/video/</BaseURL>
+        <SegmentTemplate
+          timescale="1000"
+          duration="2000"
+          startNumber="1"
+          media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 2);
+        assert.equal(items[0].url, 'https://videohost.com/video/seg-1.m4s');
+        assert.equal(items[1].url, 'https://videohost.com/video/seg-2.m4s');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Preserves AdaptationSet-level <BaseURL> for subsequent sibling representations', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <BaseURL>https://videohost.com/video/</BaseURL>
+      <Representation id="1" bandwidth="500000">
+        <SegmentList>
+          <SegmentURL media="rep1-0001.ts" />
+        </SegmentList>
+      </Representation>
+      <Representation id="2" bandwidth="1000000">
+        <SegmentList>
+          <SegmentURL media="rep2-0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser('2');
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, 'https://videohost.com/video/rep2-0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Resolves absolute child <BaseURL> overriding parent <BaseURL>', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <BaseURL>https://cdn1.com/dash/</BaseURL>
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>https://cdn2.com/video/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, 'https://cdn2.com/video/0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Resolves root-relative child <BaseURL> against parent origin', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <BaseURL>https://cdn1.com/dash/</BaseURL>
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>/video/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, 'https://cdn1.com/video/0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Resolves root-relative child <BaseURL> when bases are relative paths', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <BaseURL>main/</BaseURL>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1" bandwidth="1000000">
+        <BaseURL>/video/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="0001.ts" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items.length, 1);
+        assert.equal(items[0].url, '/video/0001.ts');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
 });

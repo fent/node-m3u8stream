@@ -3,6 +3,38 @@ import sax from 'sax';
 import { durationStr } from './parse-time';
 import { Parser, Variant, VariantFilter, selectVariant } from './parser';
 
+const isAbsolute = (url: string): boolean =>
+  /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url);
+
+const resolveURI = (bases: string[], target: string): string => {
+  const parts = [...bases.filter((s) => !!s), target];
+
+  let lastAbsIdx = -1;
+  for (let i = 0; i < parts.length; i++) {
+    if (isAbsolute(parts[i])) {
+      lastAbsIdx = i;
+    }
+  }
+
+  if (lastAbsIdx !== -1) {
+    let current = parts[lastAbsIdx];
+    for (let i = lastAbsIdx + 1; i < parts.length; i++) {
+      current = new URL(parts[i], current).href;
+    }
+    return current;
+  }
+
+  let result: string[] = [];
+  for (const part of parts) {
+    if (part.startsWith('/')) {
+      result = [part];
+    } else {
+      result.push(part);
+    }
+  }
+  return result.join('');
+};
+
 /**
  * A wrapper around sax that emits segments.
  */
@@ -187,8 +219,8 @@ export default class DashMPDParser extends Writable implements Parser {
           timescale = 1000;
           duration = 0;
           offset = 0;
-          baseURL = [];
-          treeLevel = 0;
+          treeLevel = 1;
+          baseURL.length = 1;
           periodStart = durationStr(node.attributes.start as string) || 0;
           periodDuration =
             durationStr(node.attributes.duration as string) || mpdDuration;
@@ -227,9 +259,11 @@ export default class DashMPDParser extends Writable implements Parser {
           break;
         case 'adaptationset':
           treeLevel++;
+          baseURL.length = treeLevel;
           break;
         case 'representation':
           treeLevel++;
+          baseURL.length = treeLevel;
           getSegments = node.attributes.id === `${targetID}`;
           if (getSegments) {
             if (periodStart) {
@@ -244,8 +278,7 @@ export default class DashMPDParser extends Writable implements Parser {
         case 'initialization':
           if (getSegments) {
             this.emit('item', {
-              url:
-                baseURL.filter((s) => !!s).join('') + node.attributes.sourceurl,
+              url: resolveURI(baseURL, node.attributes.sourceurl as string),
               seq: seq,
               init: true,
               duration: 0,
@@ -259,7 +292,7 @@ export default class DashMPDParser extends Writable implements Parser {
             let segmentDuration =
               ((tl?.duration || duration) / timescale) * 1000;
             this.emit('item', {
-              url: baseURL.filter((s) => !!s).join('') + node.attributes.media,
+              url: resolveURI(baseURL, node.attributes.media as string),
               seq: seq++,
               duration: segmentDuration,
             });
@@ -280,11 +313,15 @@ export default class DashMPDParser extends Writable implements Parser {
 
     segmentParser.onclosetag = (tagName) => {
       switch (tagName) {
+        case 'period':
+          baseURL.length = treeLevel;
+          treeLevel--;
+          break;
         case 'adaptationset':
+          baseURL.length = treeLevel;
           treeLevel--;
           break;
         case 'representation':
-          treeLevel--;
           if (
             getSegments &&
             segmentTemplate &&
@@ -303,9 +340,7 @@ export default class DashMPDParser extends Writable implements Parser {
             gotSegments = true;
             if (segmentTemplate.initialization) {
               this.emit('item', {
-                url:
-                  baseURL.filter((s) => !!s).join('') +
-                  tmpl(segmentTemplate.initialization),
+                url: resolveURI(baseURL, tmpl(segmentTemplate.initialization)),
                 seq: seq,
                 init: true,
                 duration: 0,
@@ -318,9 +353,10 @@ export default class DashMPDParser extends Writable implements Parser {
               segTime = time || segTime;
               for (let i = 0; i < count; i++) {
                 this.emit('item', {
-                  url:
-                    baseURL.filter((s) => !!s).join('') +
+                  url: resolveURI(
+                    baseURL,
                     tmpl(segmentTemplate.media, segTime),
+                  ),
                   seq: seq++,
                   duration: segmentDuration,
                 });
@@ -338,6 +374,8 @@ export default class DashMPDParser extends Writable implements Parser {
             }
             getSegments = false;
           }
+          baseURL.length = treeLevel;
+          treeLevel--;
           break;
       }
     };

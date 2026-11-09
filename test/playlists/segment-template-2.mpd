@@ -4,7 +4,7 @@
   <Period>
     <!-- Audio -->
     <AdaptationSet mimeType="audio/mp4" segmentAlignment="true" startWithSAP="1">
-      <SegmentTemplate media="$RepresentationID$/seg-$Number$.m4f">
+      <SegmentTemplate media="$RepresentationID$/seg-$Number$.m4f" timescale="1000">
         <SegmentTimeline>
           <S d="2000" r="3"/>
           <S d="2000" />

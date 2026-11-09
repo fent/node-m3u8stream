@@ -3,6 +3,7 @@ import { Item } from '../dist/parser';
 import fs from 'fs';
 import path from 'path';
 import assert from 'assert';
+import sinon from 'sinon';
 
 describe('dash MPD parser', () => {
   describe('Playlist with one representation', () => {
@@ -376,16 +377,16 @@ describe('dash MPD parser', () => {
       rs.on('end', () => {
         assert.ok(endlist);
         assert.deepEqual(items, [
-          { url: 'main/video/720p/segment-1.ts', duration: 60000, seq: 0 },
-          { url: 'main/video/720p/segment-2.ts', duration: 60000, seq: 1 },
-          { url: 'main/video/720p/segment-3.ts', duration: 60000, seq: 2 },
-          { url: 'main/video/720p/segment-4.ts', duration: 60000, seq: 3 },
-          { url: 'main/video/720p/segment-5.ts', duration: 60000, seq: 4 },
-          { url: 'main/video/720p/segment-6.ts', duration: 60000, seq: 5 },
-          { url: 'main/video/720p/segment-7.ts', duration: 60000, seq: 6 },
-          { url: 'main/video/720p/segment-8.ts', duration: 60000, seq: 7 },
-          { url: 'main/video/720p/segment-9.ts', duration: 60000, seq: 8 },
-          { url: 'main/video/720p/segment-10.ts', duration: 60000, seq: 9 },
+          { url: 'main/video/720p/segment-1.ts', duration: 60000, seq: 1 },
+          { url: 'main/video/720p/segment-2.ts', duration: 60000, seq: 2 },
+          { url: 'main/video/720p/segment-3.ts', duration: 60000, seq: 3 },
+          { url: 'main/video/720p/segment-4.ts', duration: 60000, seq: 4 },
+          { url: 'main/video/720p/segment-5.ts', duration: 60000, seq: 5 },
+          { url: 'main/video/720p/segment-6.ts', duration: 60000, seq: 6 },
+          { url: 'main/video/720p/segment-7.ts', duration: 60000, seq: 7 },
+          { url: 'main/video/720p/segment-8.ts', duration: 60000, seq: 8 },
+          { url: 'main/video/720p/segment-9.ts', duration: 60000, seq: 9 },
+          { url: 'main/video/720p/segment-10.ts', duration: 60000, seq: 10 },
         ]);
         done();
       });
@@ -535,11 +536,6 @@ describe('dash MPD parser', () => {
           assert.ok(endlist);
           assert.deepEqual(items, [
             {
-              url: 'audio/und/seg-0.m4f',
-              duration: (2000 / timescale) * 1000,
-              seq: 0,
-            },
-            {
               url: 'audio/und/seg-1.m4f',
               duration: (2000 / timescale) * 1000,
               seq: 1,
@@ -558,6 +554,11 @@ describe('dash MPD parser', () => {
               url: 'audio/und/seg-4.m4f',
               duration: (2000 / timescale) * 1000,
               seq: 4,
+            },
+            {
+              url: 'audio/und/seg-5.m4f',
+              duration: (2000 / timescale) * 1000,
+              seq: 5,
             },
           ]);
           done();
@@ -582,58 +583,58 @@ describe('dash MPD parser', () => {
               {
                 url: '../live-md-v/122643152223588_0-init.m4v',
                 duration: 0,
-                seq: 0,
+                seq: 1,
                 init: true,
               },
               {
                 url: '../live-md-v/122643152223588_0-36874.m4v',
                 duration: 2000,
-                seq: 0,
+                seq: 36874,
               },
               {
                 url: '../live-md-v/122643152223588_0-38874.m4v',
                 duration: 2000,
-                seq: 1,
+                seq: 38874,
               },
               {
                 url: '../live-md-v/122643152223588_0-40874.m4v',
                 duration: 2000,
-                seq: 2,
+                seq: 40874,
               },
               {
                 url: '../live-md-v/122643152223588_0-42874.m4v',
                 duration: 2000,
-                seq: 3,
+                seq: 42874,
               },
               {
                 url: '../live-md-v/122643152223588_0-44874.m4v',
                 duration: 2000,
-                seq: 4,
+                seq: 44874,
               },
               {
                 url: '../live-md-v/122643152223588_0-46874.m4v',
                 duration: 2000,
-                seq: 5,
+                seq: 46874,
               },
               {
                 url: '../live-md-v/122643152223588_0-48874.m4v',
                 duration: 2000,
-                seq: 6,
+                seq: 48874,
               },
               {
                 url: '../live-md-v/122643152223588_0-50874.m4v',
                 duration: 2000,
-                seq: 7,
+                seq: 50874,
               },
               {
                 url: '../live-md-v/122643152223588_0-52874.m4v',
                 duration: 2000,
-                seq: 8,
+                seq: 52874,
               },
               {
                 url: '../live-md-v/122643152223588_0-54874.m4v',
                 duration: 2000,
-                seq: 9,
+                seq: 54874,
               },
             ]);
             done();
@@ -661,8 +662,8 @@ describe('dash MPD parser', () => {
         parser.on('error', done);
         parser.on('end', () => {
           assert.deepEqual(items, [
-            { url: 'seg-48000.m4s', duration: 2000, seq: 0 },
-            { url: 'seg-144000.m4s', duration: 2000, seq: 1 },
+            { url: 'seg-48000.m4s', duration: 2000, seq: 1 },
+            { url: 'seg-144000.m4s', duration: 2000, seq: 2 },
           ]);
           done();
         });
@@ -965,20 +966,20 @@ describe('dash MPD parser', () => {
         assert.deepEqual(items, [
           {
             url: 'https://videohost.com/video.mp4',
-            seq: 0,
+            seq: 1,
             init: true,
             duration: 0,
             range: { start: 0, end: 833 },
           },
           {
             url: 'https://videohost.com/video.mp4',
-            seq: 0,
+            seq: 1,
             duration: 0,
             range: { start: 834, end: 50000 },
           },
           {
             url: 'https://videohost.com/video.mp4',
-            seq: 1,
+            seq: 2,
             duration: 0,
             range: { start: 50001, end: 100000 },
           },
@@ -987,5 +988,885 @@ describe('dash MPD parser', () => {
       });
       parser.end(Buffer.from(xml));
     });
+  });
+
+  describe('<SegmentBase> single-file representations', () => {
+    const filepath = path.resolve(__dirname, 'playlists/segment-base.mpd');
+
+    it('Emits init segment with range and media segment starting after indexRange', (done) => {
+      const parser = new DashMPDParser('1080p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video-1080p.mp4',
+            seq: 1,
+            init: true,
+            duration: 0,
+            range: { start: 0, end: 834 },
+          },
+          {
+            url: 'https://videohost.com/video-1080p.mp4',
+            seq: 1,
+            duration: 30000,
+            range: { start: 1561 },
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Emits separate sourceURL init segment and full media segment', (done) => {
+      const parser = new DashMPDParser('720p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/init-720p.mp4',
+            seq: 1,
+            init: true,
+            duration: 0,
+          },
+          {
+            url: 'https://videohost.com/video-720p.mp4',
+            seq: 1,
+            duration: 30000,
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Emits media segment without init segment when no Initialization tag exists', (done) => {
+      const parser = new DashMPDParser('360p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video-360p.mp4',
+            seq: 1,
+            duration: 30000,
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Emits media segment starting after indexRange when no Initialization tag exists', (done) => {
+      const parser = new DashMPDParser('240p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video-240p.mp4',
+            seq: 1,
+            duration: 30000,
+            range: { start: 501 },
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Emits media segment starting after init range when indexRange is omitted', (done) => {
+      const parser = new DashMPDParser('144p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video-144p.mp4',
+            seq: 1,
+            init: true,
+            duration: 0,
+            range: { start: 0, end: 300 },
+          },
+          {
+            url: 'https://videohost.com/video-144p.mp4',
+            seq: 1,
+            duration: 30000,
+            range: { start: 301 },
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Emits media segment using RepresentationIndex range when indexRange is on RepresentationIndex', (done) => {
+      const parser = new DashMPDParser('64p');
+      const items: Item[] = [];
+      let endlist = false;
+      parser.on('item', (item) => items.push(item));
+      parser.on('endlist', () => {
+        endlist = true;
+      });
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.ok(endlist);
+        assert.deepEqual(items, [
+          {
+            url: 'https://videohost.com/video-64p.mp4',
+            seq: 1,
+            duration: 30000,
+            range: { start: 201 },
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Does not leak Representation-level <SegmentBase> to sibling representations', (done) => {
+      const xml = `
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT30S">
+  <Period duration="PT30S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="rep1" bandwidth="1000000">
+        <BaseURL>rep1.mp4</BaseURL>
+        <SegmentBase indexRange="0-100" />
+      </Representation>
+      <Representation id="rep2" bandwidth="2000000">
+        <BaseURL>rep2/</BaseURL>
+        <SegmentList duration="10000" timescale="1000">
+          <SegmentURL media="rep2-seg1.mp4" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser('rep2');
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          {
+            url: 'rep2/rep2-seg1.mp4',
+            seq: 1,
+            duration: 10000,
+          },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  describe('SegmentTimeline scoping and repeat semantics', () => {
+    it('Does not leak a SegmentTimeline across sibling representations', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="r1-$Time$.m4s">
+          <SegmentTimeline><S t="0" d="2000" /></SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+      <Representation id="2">
+        <SegmentTemplate timescale="1000" media="r2-$Time$.m4s">
+          <SegmentTimeline>
+            <S t="0" d="2000" />
+            <S t="2000" d="2000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser('2');
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'r2-0.m4s', seq: 1, duration: 2000 },
+          { url: 'r2-2000.m4s', seq: 2, duration: 2000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Expands S@r="-1" to the end of the Period', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT6S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="seg-$Time$.m4s">
+          <SegmentTimeline><S t="0" d="2000" r="-1" /></SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'seg-0.m4s', seq: 1, duration: 2000 },
+          { url: 'seg-2000.m4s', seq: 2, duration: 2000 },
+          { url: 'seg-4000.m4s', seq: 3, duration: 2000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Honors an explicit S@t="0" after a non-zero time', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="seg-$Time$.m4s">
+          <SegmentTimeline>
+            <S t="1000" d="2000" />
+            <S t="0" d="2000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'seg-1000.m4s', seq: 1, duration: 2000 },
+          { url: 'seg-0.m4s', seq: 2, duration: 2000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Defaults @startNumber to 1 and @timescale to 1', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate media="seg-$Number$.m4s">
+          <SegmentTimeline><S t="0" d="1000" /></SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'seg-1.m4s', seq: 1, duration: 1000000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  describe('Relative <BaseURL> resolution', () => {
+    it('Resolves relative BaseURL chains using URI semantics', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <BaseURL>dash/</BaseURL>
+    <AdaptationSet mimeType="video/mp4">
+      <BaseURL>video/</BaseURL>
+      <Representation id="1">
+        <BaseURL>720p/</BaseURL>
+        <SegmentList>
+          <SegmentURL media="seg.m4s" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items[0].url, 'dash/video/720p/seg.m4s');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Treats a relative BaseURL without a trailing slash as a file', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>base</BaseURL>
+        <SegmentList>
+          <SegmentURL media="seg.m4s" />
+        </SegmentList>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(items[0].url, 'seg.m4s');
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  describe('Dynamic SegmentTemplate without Period duration', () => {
+    it('Emits segments inside the time-shift buffer', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     timeShiftBufferDepth="PT4S" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period start="PT0S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000"
+          media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', (err) => {
+        clock.restore();
+        done(err);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        assert.deepEqual(items, [
+          { url: 'seg-4.m4s', seq: 4, duration: 2000 },
+          { url: 'seg-5.m4s', seq: 5, duration: 2000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  describe('External <RepresentationIndex>', () => {
+    it('Does not skip media when the index is external and duration is known', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT30S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>video.mp4</BaseURL>
+        <SegmentBase duration="30000" timescale="1000">
+          <RepresentationIndex sourceURL="video.sidx" />
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'video.mp4', seq: 1, duration: 30000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  describe('DASH edge cases', () => {
+    it('Ignores invalid byte ranges', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT10S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>video.mp4</BaseURL>
+        <SegmentBase duration="10000" timescale="1000" indexRange="bad" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'video.mp4', seq: 1, duration: 10000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Skips zero-duration timeline entries', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="seg-$Time$.m4s">
+          <SegmentTimeline>
+            <S t="0" d="0" />
+            <S t="0" d="2000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [{ url: 'seg-0.m4s', seq: 1, duration: 2000 }]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Expands r="-1" up to the next S@t', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="seg-$Time$.m4s">
+          <SegmentTimeline>
+            <S t="0" d="2000" r="-1" />
+            <S t="6000" d="2000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          { url: 'seg-0.m4s', seq: 1, duration: 2000 },
+          { url: 'seg-2000.m4s', seq: 2, duration: 2000 },
+          { url: 'seg-4000.m4s', seq: 3, duration: 2000 },
+          { url: 'seg-6000.m4s', seq: 4, duration: 2000 },
+        ]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Emits one segment when a dynamic MPD has no elapsed time', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:00Z'),
+      });
+      const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', (err) => {
+        clock.restore();
+        done(err);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        assert.deepEqual(items, [{ url: 'seg-1.m4s', seq: 1, duration: 2000 }]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Uses the whole elapsed window when timeShiftBufferDepth is absent', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', (err) => {
+        clock.restore();
+        done(err);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-1.m4s', 'seg-2.m4s', 'seg-3.m4s', 'seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Clamps a dynamic window to the Period duration', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     timeShiftBufferDepth="PT4S" mediaPresentationDuration="PT8S"
+     xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', (err) => {
+        clock.restore();
+        done(err);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        assert.deepEqual(items, [{ url: 'seg-4.m4s', seq: 4, duration: 2000 }]);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Emits no media when a SegmentBase has no URL', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentBase />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, []);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
+
+  it('Falls back when numeric attributes are invalid', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="abc" startNumber="nope" media="seg-$Number$.m4s">
+          <SegmentTimeline><S t="0" d="1000" /></SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [
+        { url: 'seg-1.m4s', seq: 1, duration: 1000000 },
+      ]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Emits one segment for r="-1" without a known end', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" media="seg-$Time$.m4s">
+          <SegmentTimeline><S t="0" d="2000" r="-1" /></SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [{ url: 'seg-0.m4s', seq: 1, duration: 2000 }]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Emits one segment for a dynamic MPD without availabilityStartTime', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [{ url: 'seg-1.m4s', seq: 1, duration: 2000 }]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Uses the full Period when a dynamic MPD has not started yet', (done) => {
+    const clock = sinon.useFakeTimers({
+      now: Date.parse('2020-01-01T00:00:00Z'),
+    });
+    const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     mediaPresentationDuration="PT6S" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', (err) => {
+      clock.restore();
+      done(err);
+    });
+    parser.on('end', () => {
+      clock.restore();
+      assert.deepEqual(items, [
+        { url: 'seg-1.m4s', seq: 1, duration: 2000 },
+        { url: 'seg-2.m4s', seq: 2, duration: 2000 },
+        { url: 'seg-3.m4s', seq: 3, duration: 2000 },
+      ]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Defaults SegmentBase @timescale to 1', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT30S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>video.mp4</BaseURL>
+        <SegmentBase duration="30000" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [
+        { url: 'video.mp4', seq: 1, duration: 30000000 },
+      ]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Ignores SegmentURL elements outside a SegmentList', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentURL media="orphan.ts" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, []);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Emits a Representation with only a BaseURL as one segment', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT10S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>video.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [{ url: 'video.mp4', seq: 1, duration: 10000 }]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Treats availabilityStartTime 0 as a real epoch time', (done) => {
+    const clock = sinon.useFakeTimers({
+      now: Date.parse('1970-01-01T00:00:10Z'),
+    });
+    const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="1970-01-01T00:00:00Z"
+     timeShiftBufferDepth="PT4S" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="audio/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" startNumber="0"
+          media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', (err) => {
+      clock.restore();
+      done(err);
+    });
+    parser.on('end', () => {
+      clock.restore();
+      assert.deepEqual(items, [
+        { url: 'seg-3.m4s', seq: 3, duration: 2000 },
+        { url: 'seg-4.m4s', seq: 4, duration: 2000 },
+      ]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  it('Handles Representations without mimeType or contentType', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT1S">
+    <AdaptationSet>
+      <Representation id="1">
+        <BaseURL>media.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [{ url: 'media.mp4', seq: 1, duration: 1000 }]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
   });
 });

@@ -158,8 +158,10 @@ let m3u8stream = ((
     (segment: Item, callback: Callback): void => {
       let reqOptions = Object.assign({}, requestOptions);
       if (segment.range) {
+        const rangeEnd =
+          segment.range.end !== undefined ? segment.range.end : '';
         reqOptions.headers = Object.assign({}, reqOptions.headers, {
-          Range: `bytes=${segment.range.start}-${segment.range.end}`,
+          Range: `bytes=${segment.range.start}-${rangeEnd}`,
         });
       }
       const req = miniget(
@@ -313,8 +315,9 @@ let m3u8stream = ((
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
       if (item.init) {
+        const rangeEnd = item.range?.end !== undefined ? item.range.end : '';
         const initKey = item.range
-          ? `${item.url}@${item.range.start}-${item.range.end}`
+          ? `${item.url}@${item.range.start}-${rangeEnd}`
           : item.url;
         if (initKey === lastInit) {
           return;

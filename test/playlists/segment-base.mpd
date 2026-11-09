@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static" mediaPresentationDuration="PT30S">
+  <Period id="0" duration="PT30S">
+    <BaseURL>https://videohost.com/</BaseURL>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1080p" bandwidth="4000000" width="1920" height="1080">
+        <BaseURL>video-1080p.mp4</BaseURL>
+        <SegmentBase indexRange="835-1560">
+          <Initialization range="0-834"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="720p" bandwidth="2000000" width="1280" height="720">
+        <BaseURL>video-720p.mp4</BaseURL>
+        <SegmentBase>
+          <Initialization sourceURL="init-720p.mp4"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="360p" bandwidth="800000" width="640" height="360">
+        <BaseURL>video-360p.mp4</BaseURL>
+        <SegmentBase/>
+      </Representation>
+      <Representation id="240p" bandwidth="400000" width="426" height="240">
+        <BaseURL>video-240p.mp4</BaseURL>
+        <SegmentBase indexRange="0-500"/>
+      </Representation>
+      <Representation id="144p" bandwidth="200000" width="256" height="144">
+        <BaseURL>video-144p.mp4</BaseURL>
+        <SegmentBase duration="30000" timescale="1000">
+          <Initialization range="0-300"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="64p" bandwidth="100000" width="128" height="64">
+        <BaseURL>video-64p.mp4</BaseURL>
+        <SegmentBase>
+          <RepresentationIndex range="100-200"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

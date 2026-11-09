@@ -16,7 +16,7 @@ export interface Item {
   seq: number;
   duration: number;
   time?: number;
-  range?: { start: number; end: number };
+  range?: { start: number; end?: number };
   init?: boolean;
   key?: KeyInfo;
 }
@@ -32,6 +32,7 @@ export interface Variant {
   height?: number;
   codecs?: string;
   frameRate?: number;
+  contentType?: string;
 }
 
 export type VariantFilter = string | number | ((variant: Variant) => boolean);

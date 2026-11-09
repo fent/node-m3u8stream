@@ -1869,4 +1869,31 @@ describe('dash MPD parser', () => {
     });
     parser.end(Buffer.from(xml));
   });
+
+  it('Selects a video Representation by default when audio comes first', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT2S">
+    <AdaptationSet mimeType="audio/mp4">
+      <Representation id="a" contentType="audio">
+        <BaseURL>audio.m4a</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="v" contentType="video">
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(items, [{ url: 'seg-1.m4s', seq: 1, duration: 2000 }]);
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
 });

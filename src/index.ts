@@ -58,6 +58,9 @@ interface TimedItem extends Item {
   time: number;
 }
 
+const formatByteRange = (range: { start: number; end?: number }): string =>
+  `${range.start}-${range.end ?? ''}`;
+
 const supportedParsers = {
   m3u8: m3u8Parser,
   'dash-mpd': DashMPDParser,
@@ -158,10 +161,8 @@ let m3u8stream = ((
     (segment: Item, callback: Callback): void => {
       let reqOptions = Object.assign({}, requestOptions);
       if (segment.range) {
-        const rangeEnd =
-          segment.range.end !== undefined ? segment.range.end : '';
         reqOptions.headers = Object.assign({}, reqOptions.headers, {
-          Range: `bytes=${segment.range.start}-${rangeEnd}`,
+          Range: `bytes=${formatByteRange(segment.range)}`,
         });
       }
       const req = miniget(
@@ -315,9 +316,8 @@ let m3u8stream = ((
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
       if (item.init) {
-        const rangeEnd = item.range?.end !== undefined ? item.range.end : '';
         const initKey = item.range
-          ? `${item.url}@${item.range.start}-${rangeEnd}`
+          ? `${item.url}@${formatByteRange(item.range)}`
           : item.url;
         if (initKey === lastInit) {
           return;
@@ -434,5 +434,4 @@ let m3u8stream = ((
   return stream;
 }) as m3u8stream.m3u8streamFunc;
 m3u8stream.parseTimestamp = humanStr;
-
 export = m3u8stream;

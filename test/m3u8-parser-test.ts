@@ -55,12 +55,16 @@ describe('m3u8 parser', () => {
       let filepath = path.resolve(__dirname, 'playlists/master-named.m3u8');
       let items: Item[] = [];
       let variants: any[] = [];
+      let media: any[] = [];
       const parser = new m3u8Parser();
       parser.on('item', (item) => {
         items.push(item);
       });
       parser.on('variant', (variant) => {
         variants.push(variant);
+      });
+      parser.on('media', (m) => {
+        media.push(m);
       });
       parser.on('error', done);
       let rs = fs.createReadStream(filepath, { highWaterMark: 16 });
@@ -71,35 +75,57 @@ describe('m3u8 parser', () => {
           {
             url: 'low/low.m3u8',
             index: 0,
-            name: 'low',
             bandwidth: 1280000,
             resolution: '1280x720',
             width: 1280,
             height: 720,
             codecs: undefined,
             frameRate: 30,
+            audio: 'aac',
+            video: undefined,
+            subtitles: undefined,
+            closedCaptions: undefined,
           },
           {
             url: 'hi/hi.m3u8',
             index: 1,
-            name: 'hi',
             bandwidth: 2560000,
             resolution: '1920x1080',
             width: 1920,
             height: 1080,
             codecs: undefined,
             frameRate: 60,
+            audio: 'aac',
+            video: undefined,
+            subtitles: undefined,
+            closedCaptions: undefined,
           },
           {
             url: 'audio/audio.m3u8',
             index: 2,
-            name: undefined,
             bandwidth: 65000,
             resolution: undefined,
             width: undefined,
             height: undefined,
             codecs: 'mp4a.40.2',
             frameRate: undefined,
+            audio: undefined,
+            video: undefined,
+            subtitles: undefined,
+            closedCaptions: undefined,
+          },
+        ]);
+        assert.deepEqual(media, [
+          {
+            type: 'AUDIO',
+            groupId: 'aac',
+            name: 'English',
+            uri: 'audio/audio.m3u8',
+            language: 'en',
+            default: true,
+            autoselect: true,
+            channels: undefined,
+            characteristics: undefined,
           },
         ]);
         done();
@@ -121,6 +147,102 @@ describe('m3u8 parser', () => {
         done();
       });
       parser.end(playlist);
+    });
+  });
+
+  describe('Parse `EXT-X-MEDIA`', () => {
+    const expectError = (tag: string, message: string, done: Mocha.Done) => {
+      const parser = new m3u8Parser();
+      parser.on('error', (err) => {
+        assert.equal(err.message, message);
+        done();
+      });
+      parser.end(`#EXTM3U\n${tag}\n#EXTINF:1,\nseg.ts\n`);
+    };
+
+    it('Emits an error when TYPE is missing or invalid', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:GROUP-ID="a",NAME="n",URI="a.m3u8"',
+        '`EXT-X-MEDIA` found without a valid required `TYPE` attribute',
+        done,
+      );
+    });
+
+    it('Emits an error when GROUP-ID or NAME is missing', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=AUDIO,NAME="n",URI="a.m3u8"',
+        '`EXT-X-MEDIA` requires `GROUP-ID` and `NAME` attributes',
+        done,
+      );
+    });
+
+    it('Emits an error when GROUP-ID is not quoted', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=a,NAME="n",URI="a.m3u8"',
+        '`EXT-X-MEDIA` attribute `GROUP-ID` must be quoted',
+        done,
+      );
+    });
+
+    it('Emits an error when NAME is not quoted', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME=n,URI="a.m3u8"',
+        '`EXT-X-MEDIA` attribute `NAME` must be quoted',
+        done,
+      );
+    });
+
+    it('Emits an error when CLOSED-CAPTIONS has a URI', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID="a",NAME="n",URI="a.m3u8"',
+        '`EXT-X-MEDIA` with `TYPE=CLOSED-CAPTIONS` must not have a `URI` attribute',
+        done,
+      );
+    });
+
+    it('Emits an error when a rendition URI is missing', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="n"',
+        '`EXT-X-MEDIA` found without required `URI` attribute',
+        done,
+      );
+    });
+
+    it('Emits an error when URI is not quoted', (done) => {
+      expectError(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="n",URI=a.m3u8',
+        '`EXT-X-MEDIA` attribute `URI` must be quoted',
+        done,
+      );
+    });
+
+    it('Emits optional rendition attributes', (done) => {
+      const parser = new m3u8Parser();
+      const media: any[] = [];
+      parser.on('media', (m) => media.push(m));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(media, [
+          {
+            type: 'SUBTITLES',
+            groupId: 'subs',
+            name: 'French',
+            uri: 'fr.m3u8',
+            language: 'fr',
+            forced: true,
+            channels: '2',
+            characteristics: 'public.accessibility',
+          },
+        ]);
+        done();
+      });
+      parser.end(
+        [
+          '#EXTM3U',
+          '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="French",URI="fr.m3u8",' +
+            'LANGUAGE="fr",FORCED=YES,CHANNELS="2",CHARACTERISTICS="public.accessibility"',
+        ].join('\n'),
+      );
     });
   });
 
@@ -383,6 +505,55 @@ describe('m3u8 parser', () => {
     });
   });
 
+  describe('Playlist combines `EXT-X-BYTERANGE` with `EXT-X-MAP` byte ranges', () => {
+    it('Keeps the implicit media offset relative to the previous media segment', (done) => {
+      const parser = new m3u8Parser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          {
+            url: 'seg.ts',
+            seq: 0,
+            duration: 2000,
+            range: { start: 0, end: 99 },
+            key: undefined,
+          },
+          {
+            url: 'init.mp4',
+            seq: 1,
+            init: true,
+            duration: 0,
+            range: { start: 1000, end: 1099 },
+            key: undefined,
+          },
+          {
+            url: 'seg.ts',
+            seq: 1,
+            duration: 2000,
+            range: { start: 100, end: 149 },
+            key: undefined,
+          },
+        ]);
+        done();
+      });
+      parser.end(
+        [
+          '#EXTM3U',
+          '#EXTINF:2,',
+          '#EXT-X-BYTERANGE:100@0',
+          'seg.ts',
+          '#EXT-X-MAP:URI="init.mp4",BYTERANGE="100@1000"',
+          '#EXTINF:2,',
+          '#EXT-X-BYTERANGE:50',
+          'seg.ts',
+          '#EXT-X-ENDLIST',
+        ].join('\n'),
+      );
+    });
+  });
+
   describe('Playlist contains `EXT-X-KEY`', () => {
     it('Attaches key to media segments', (done) => {
       let filepath = path.resolve(__dirname, 'playlists/x-key.m3u8');
@@ -534,7 +705,7 @@ describe('m3u8 parser', () => {
     });
 
     describe('With invalid `IV` format', () => {
-      it('Emits error when IV does not start with 0x or is not 32 hex chars', (done) => {
+      it('Emits error when IV does not start with 0x or contains invalid hex', (done) => {
         const parser = new m3u8Parser();
         parser.on('error', (err) => {
           assert.equal(
@@ -553,6 +724,29 @@ describe('m3u8 parser', () => {
           ].join('\n'),
         );
         parser.end();
+      });
+    });
+
+    describe('With a shortened `IV` value', () => {
+      it('Accepts a shortened 128-bit IV value', (done) => {
+        const parser = new m3u8Parser();
+        const items: Item[] = [];
+        parser.on('item', (item) => items.push(item));
+        parser.on('error', done);
+        parser.on('end', () => {
+          assert.equal(items.length, 1);
+          assert.equal(items[0].key?.iv, '0x1');
+          done();
+        });
+        parser.end(
+          [
+            '#EXTM3U',
+            '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",IV=0x1',
+            '#EXTINF:5,',
+            'main1.mp4',
+            '#EXT-X-ENDLIST',
+          ].join('\n'),
+        );
       });
     });
 
@@ -897,6 +1091,108 @@ describe('m3u8 parser', () => {
           'second.ts',
           '#EXTINF:invalid,',
           'third.ts',
+          '#EXT-X-ENDLIST',
+        ].join('\n'),
+      );
+      parser.end();
+    });
+  });
+
+  describe('Playlist contains `EXT-X-DISCONTINUITY` and `EXT-X-DISCONTINUITY-SEQUENCE`', () => {
+    it('Parses discontinuity tags and sequence numbers', (done) => {
+      const filepath = path.resolve(__dirname, 'playlists/discontinuity.m3u8');
+      const items: Item[] = [];
+      const discontinuities: number[] = [];
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => items.push(item));
+      parser.on('discontinuity', (seq) => discontinuities.push(seq));
+      parser.on('error', done);
+      const rs = fs.createReadStream(filepath);
+      rs.pipe(parser);
+      rs.on('end', () => {
+        assert.deepEqual(discontinuities, [4, 5]);
+        assert.deepEqual(items, [
+          {
+            url: 'seg-100.ts',
+            seq: 100,
+            duration: 10000,
+            range: undefined,
+            key: undefined,
+            discontinuitySequence: 3,
+          },
+          {
+            url: 'seg-101.ts',
+            seq: 101,
+            duration: 10000,
+            range: undefined,
+            key: undefined,
+            discontinuitySequence: 3,
+          },
+          {
+            url: 'ad-102.ts',
+            seq: 102,
+            duration: 5000,
+            range: undefined,
+            key: undefined,
+            discontinuity: true,
+            discontinuitySequence: 4,
+          },
+          {
+            url: 'ad-103.ts',
+            seq: 103,
+            duration: 5000,
+            range: undefined,
+            key: undefined,
+            discontinuitySequence: 4,
+          },
+          {
+            url: 'seg-104.ts',
+            seq: 104,
+            duration: 10000,
+            range: undefined,
+            key: undefined,
+            discontinuity: true,
+            discontinuitySequence: 5,
+          },
+        ]);
+        done();
+      });
+    });
+
+    it('Defaults discontinuity sequence to 0 when EXT-X-DISCONTINUITY-SEQUENCE is omitted', (done) => {
+      const items: Item[] = [];
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(items, [
+          {
+            url: 'first.ts',
+            seq: 0,
+            duration: 4000,
+            range: undefined,
+            key: undefined,
+          },
+          {
+            url: 'second.ts',
+            seq: 1,
+            duration: 4000,
+            range: undefined,
+            key: undefined,
+            discontinuity: true,
+            discontinuitySequence: 1,
+          },
+        ]);
+        done();
+      });
+      parser.write(
+        [
+          '#EXTM3U',
+          '#EXTINF:4,',
+          'first.ts',
+          '#EXT-X-DISCONTINUITY',
+          '#EXTINF:4,',
+          'second.ts',
           '#EXT-X-ENDLIST',
         ].join('\n'),
       );

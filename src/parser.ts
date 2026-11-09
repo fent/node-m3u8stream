@@ -19,6 +19,8 @@ export interface Item {
   range?: { start: number; end?: number };
   init?: boolean;
   key?: KeyInfo;
+  discontinuity?: boolean;
+  discontinuitySequence?: number;
 }
 
 export interface Variant {
@@ -33,6 +35,23 @@ export interface Variant {
   codecs?: string;
   frameRate?: number;
   contentType?: string;
+  audio?: string;
+  video?: string;
+  subtitles?: string;
+  closedCaptions?: string;
+}
+
+export interface Media {
+  type: 'AUDIO' | 'VIDEO' | 'SUBTITLES' | 'CLOSED-CAPTIONS';
+  groupId: string;
+  name: string;
+  uri?: string;
+  language?: string;
+  default?: boolean;
+  autoselect?: boolean;
+  forced?: boolean;
+  channels?: string;
+  characteristics?: string;
 }
 
 export type VariantFilter = string | number | ((variant: Variant) => boolean);
@@ -48,7 +67,9 @@ export function selectVariant(
     return undefined;
   }
   if (filter === undefined) {
-    return variants[0];
+    return (
+      variants.find((variant) => variant.contentType === 'video') ?? variants[0]
+    );
   }
   if (typeof filter === 'function') {
     return variants.find(filter);
@@ -77,6 +98,7 @@ export function selectVariant(
       if (v.url === filterStr) return true;
       const lastPart = v.url.split(/[?#]/)[0].split('/').filter(Boolean).pop();
       if (lastPart === filterStr) return true;
+      if (lastPart?.replace(/\.[^.]*$/, '') === filterStr) return true;
     }
     return false;
   });
@@ -110,11 +132,29 @@ export function selectVariant(
   return undefined;
 }
 
+export function selectMedia(
+  media: Media[],
+  filter?: VariantFilter,
+): Media | undefined {
+  if (typeof filter !== 'string') {
+    return undefined;
+  }
+  return media.find(
+    (m) =>
+      m.name === filter ||
+      m.groupId === filter ||
+      m.uri === filter ||
+      m.language === filter,
+  );
+}
+
 export interface Parser extends Writable {
   on(event: 'item', listener: (item: Item) => boolean): this;
   on(event: 'variant', listener: (variant: Variant) => boolean): this;
+  on(event: 'media', listener: (media: Media) => boolean): this;
   on(event: string | symbol, listener: (...args: any[]) => any): this;
   emit(event: 'item', item: Item): boolean;
   emit(event: 'variant', variant: Variant): boolean;
+  emit(event: 'media', media: Media): boolean;
   emit(event: string, ...args: any[]): boolean;
 }

@@ -17,6 +17,9 @@ export default class m3u8Parser extends Writable implements Parser {
   private _variantIndex: number;
   private _currentKey: KeyInfo | null;
   private _unsupportedKey: boolean;
+  private _discontinuitySeq: number;
+  private _hasDiscontinuity: boolean;
+  private _nextItemDiscontinuity: boolean;
 
   constructor() {
     super();
@@ -29,6 +32,10 @@ export default class m3u8Parser extends Writable implements Parser {
     this._nextVariantAttrs = null;
     this._variantIndex = 0;
     this._currentKey = null;
+    this._unsupportedKey = false;
+    this._discontinuitySeq = 0;
+    this._hasDiscontinuity = false;
+    this._nextItemDiscontinuity = false;
     this.on('finish', () => {
       this._parseLine(this._lastLine);
       this.emit('end');
@@ -47,13 +54,15 @@ export default class m3u8Parser extends Writable implements Parser {
     return { attrs, quoted };
   }
 
-  private _parseRange(value: string) {
+  private _parseRange(value: string, updateLastItemRangeEnd = true) {
     if (!value) return null;
     let svalue = value.split('@');
     let start = svalue[1] ? parseInt(svalue[1]) : this._lastItemRangeEnd + 1;
     let end = start + parseInt(svalue[0]) - 1;
     let range = { start, end };
-    this._lastItemRangeEnd = range.end;
+    if (updateLastItemRangeEnd) {
+      this._lastItemRangeEnd = range.end;
+    }
     return range;
   }
 
@@ -74,6 +83,16 @@ export default class m3u8Parser extends Writable implements Parser {
       switch (tag) {
         case 'EXT-X-PROGRAM-DATE-TIME':
           this.emit('starttime', new Date(value).getTime());
+          break;
+        case 'EXT-X-DISCONTINUITY-SEQUENCE':
+          this._discontinuitySeq = parseInt(value, 10);
+          this._hasDiscontinuity = true;
+          break;
+        case 'EXT-X-DISCONTINUITY':
+          this._discontinuitySeq++;
+          this._hasDiscontinuity = true;
+          this._nextItemDiscontinuity = true;
+          this.emit('discontinuity', this._discontinuitySeq);
           break;
         case 'EXT-X-MEDIA-SEQUENCE':
           this._seq = parseInt(value);
@@ -125,7 +144,7 @@ export default class m3u8Parser extends Writable implements Parser {
               return;
             }
           }
-          if (attrs.IV && !/^0x[0-9a-f]{32}$/i.test(attrs.IV)) {
+          if (attrs.IV && !/^0x[0-9a-f]{1,32}$/i.test(attrs.IV)) {
             this.destroy(
               new Error('`EXT-X-KEY` found with invalid `IV` attribute format'),
             );
@@ -203,7 +222,7 @@ export default class m3u8Parser extends Writable implements Parser {
             seq: this._seq,
             init: true,
             duration: 0,
-            range: this._parseRange(attrs.BYTERANGE) ?? undefined,
+            range: this._parseRange(attrs.BYTERANGE, false) ?? undefined,
             key: this._currentKey ?? undefined,
           });
           break;
@@ -226,6 +245,73 @@ export default class m3u8Parser extends Writable implements Parser {
           this._nextVariantAttrs = this._parseAttrList(value).attrs;
           this._expectVariantURI = true;
           break;
+        case 'EXT-X-MEDIA': {
+          let { attrs, quoted } = this._parseAttrList(value);
+          const type = attrs.TYPE;
+          if (
+            !type ||
+            !['AUDIO', 'VIDEO', 'SUBTITLES', 'CLOSED-CAPTIONS'].includes(type)
+          ) {
+            this.destroy(
+              new Error(
+                '`EXT-X-MEDIA` found without a valid required `TYPE` attribute',
+              ),
+            );
+            return;
+          }
+          if (!attrs['GROUP-ID'] || !attrs.NAME) {
+            this.destroy(
+              new Error(
+                '`EXT-X-MEDIA` requires `GROUP-ID` and `NAME` attributes',
+              ),
+            );
+            return;
+          }
+          for (const name of ['GROUP-ID', 'NAME']) {
+            if (!quoted[name]) {
+              this.destroy(
+                new Error(
+                  `\`EXT-X-MEDIA\` attribute \`${name}\` must be quoted`,
+                ),
+              );
+              return;
+            }
+          }
+          if (type === 'CLOSED-CAPTIONS') {
+            if (attrs.URI) {
+              this.destroy(
+                new Error(
+                  '`EXT-X-MEDIA` with `TYPE=CLOSED-CAPTIONS` must not have a `URI` attribute',
+                ),
+              );
+              return;
+            }
+          } else if (!attrs.URI) {
+            this.destroy(
+              new Error('`EXT-X-MEDIA` found without required `URI` attribute'),
+            );
+            return;
+          }
+          if (attrs.URI && !quoted.URI) {
+            this.destroy(
+              new Error('`EXT-X-MEDIA` attribute `URI` must be quoted'),
+            );
+            return;
+          }
+          this.emit('media', {
+            type: type as 'AUDIO' | 'VIDEO' | 'SUBTITLES' | 'CLOSED-CAPTIONS',
+            groupId: attrs['GROUP-ID'],
+            name: attrs.NAME,
+            uri: attrs.URI,
+            language: attrs.LANGUAGE,
+            ...(attrs.DEFAULT === 'YES' ? { default: true } : {}),
+            ...(attrs.AUTOSELECT === 'YES' ? { autoselect: true } : {}),
+            ...(attrs.FORCED === 'YES' ? { forced: true } : {}),
+            channels: attrs.CHANNELS,
+            characteristics: attrs.CHARACTERISTICS,
+          });
+          break;
+        }
       }
     } else if (!/^#/.test(line) && line.trim()) {
       if (this._expectVariantURI) {
@@ -248,13 +334,16 @@ export default class m3u8Parser extends Writable implements Parser {
         this.emit('variant', {
           url: line.trim(),
           index: this._variantIndex++,
-          name: attrs.NAME || undefined,
           bandwidth,
           resolution,
           width,
           height,
           codecs: attrs.CODECS,
           frameRate,
+          audio: attrs.AUDIO,
+          video: attrs.VIDEO,
+          subtitles: attrs.SUBTITLES,
+          closedCaptions: attrs['CLOSED-CAPTIONS'],
         });
         this._expectVariantURI = false;
         this._nextVariantAttrs = null;
@@ -270,9 +359,14 @@ export default class m3u8Parser extends Writable implements Parser {
         duration: this._nextItemDuration || 0,
         range: this._nextItemRange ?? undefined,
         key: this._currentKey ?? undefined,
+        ...(this._nextItemDiscontinuity ? { discontinuity: true } : {}),
+        ...(this._hasDiscontinuity
+          ? { discontinuitySequence: this._discontinuitySeq }
+          : {}),
       });
       this._nextItemDuration = null;
       this._nextItemRange = null;
+      this._nextItemDiscontinuity = false;
     }
   }
 

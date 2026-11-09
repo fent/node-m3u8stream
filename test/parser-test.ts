@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Variant, selectVariant } from '../src/parser';
+import { Media, Variant, selectMedia, selectVariant } from '../dist/parser';
 
 describe('selectVariant', () => {
   const sampleVariants: Variant[] = [
@@ -114,6 +114,15 @@ describe('selectVariant', () => {
     );
   });
 
+  it('Prefers the first video variant when filter is undefined', () => {
+    const variants: Variant[] = [
+      { id: 'text', index: 0, contentType: 'text' },
+      { id: 'audio', index: 1, contentType: 'audio' },
+      { id: 'video', index: 2, contentType: 'video' },
+    ];
+    assert.strictEqual(selectVariant(variants), variants[2]);
+  });
+
   it('Filters using a custom predicate function', () => {
     const match = selectVariant(
       sampleVariants,
@@ -168,6 +177,13 @@ describe('selectVariant', () => {
       selectVariant(sampleVariants, 'high'),
       sampleVariants[8],
     );
+    const variantsWithName: Variant[] = [
+      { id: 'track-1', name: 'english-audio', index: 0 },
+    ];
+    assert.strictEqual(
+      selectVariant(variantsWithName, 'english-audio'),
+      variantsWithName[0],
+    );
     assert.strictEqual(selectVariant(sampleVariants, '3'), sampleVariants[3]);
     assert.strictEqual(selectVariant(sampleVariants, 3), sampleVariants[3]);
   });
@@ -217,5 +233,63 @@ describe('selectVariant', () => {
 
   it('Returns undefined when no exact match, keyword, or resolution matches', () => {
     assert.strictEqual(selectVariant(sampleVariants, 'nonexistent'), undefined);
+  });
+
+  it('Matches a URL basename without its extension', () => {
+    const variant: Variant = {
+      url: 'mid/stream_xyz.m3u8',
+      index: 10,
+      bandwidth: 1000,
+    };
+    assert.strictEqual(selectVariant([variant], 'stream_xyz'), variant);
+  });
+
+  it('Skips URL matching for variants without a URL', () => {
+    const variant: Variant = { index: 0, bandwidth: 1000 };
+    assert.strictEqual(selectVariant([variant], 'missing'), undefined);
+  });
+
+  it('Handles URLs without a basename', () => {
+    const variant: Variant = { url: '/', index: 0 };
+    assert.strictEqual(selectVariant([variant], 'missing'), undefined);
+  });
+});
+
+describe('selectMedia', () => {
+  const media: Media[] = [
+    {
+      type: 'AUDIO',
+      groupId: 'aac',
+      name: 'English',
+      uri: 'audio/en.m3u8',
+      language: 'en',
+    },
+    {
+      type: 'SUBTITLES',
+      groupId: 'subs',
+      name: 'French',
+      uri: 'subs/fr.m3u8',
+      language: 'fr',
+    },
+  ];
+
+  it('Returns undefined for undefined or non-string filters', () => {
+    assert.strictEqual(selectMedia(media), undefined);
+    assert.strictEqual(selectMedia(media, 1), undefined);
+    assert.strictEqual(
+      selectMedia(media, () => true),
+      undefined,
+    );
+  });
+
+  it('Selects by name, group id, URI, or language', () => {
+    assert.strictEqual(selectMedia(media, 'English'), media[0]);
+    assert.strictEqual(selectMedia(media, 'aac'), media[0]);
+    assert.strictEqual(selectMedia(media, 'subs/fr.m3u8'), media[1]);
+    assert.strictEqual(selectMedia(media, 'fr'), media[1]);
+  });
+
+  it('Returns undefined when nothing matches', () => {
+    assert.strictEqual(selectMedia(media, 'Spanish'), undefined);
   });
 });

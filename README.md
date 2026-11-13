@@ -20,6 +20,29 @@ m3u8stream('http://somesite.com/link/to/the/playlist.m3u8').pipe(
 );
 ```
 
+# Tested streams
+
+Compatibility is checked against these public streams. They are third-party resources and may change or disappear.
+
+| Type                       | Covers                                                                 | Stream                                                                                                                        | Notes                                                                           |
+| -------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| HLS VOD (TS)               | Multi-variant master playlist, TS segments, muxed audio/video          | [Mux Big Buck Bunny](https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8)                                                       |                                                                                 |
+| HLS VOD (TS)               | Advanced master with `EXT-X-MEDIA` renditions                          | [Apple TS example](https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8)        | Audio may be a separate rendition                                               |
+| HLS VOD (fMP4)             | `EXT-X-MAP` initialization, fragmented MP4                             | [Apple fMP4 example](https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8)    | Audio may be a separate rendition                                               |
+| HLS VOD (fMP4)             | Initialization and muxed audio/video                                   | [Unified Streaming HLS](https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8) |                                                                                 |
+| HLS encrypted              | `EXT-X-KEY`, AES-128 key fetch and decryption                          | [JW Player oceans AES](https://playertest.longtailvideo.com/adaptive/oceans_aes/oceans_aes.m3u8)                              | AES-128 only; `SAMPLE-AES` is not supported                                     |
+| DASH VOD                   | Duration-based `SegmentTemplate`, initialization segment               | [DASH-IF Big Buck Bunny](https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd)                                           |                                                                                 |
+| DASH VOD                   | Multiple representations and adaptation sets                           | [Envivio](https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd)                                                       |                                                                                 |
+| DASH VOD                   | Text-first and audio-first adaptation sets                             | [Shaka Angel One](https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd)                                        | Default selection skips text and prefers video; use `id` for a specific quality |
+| DASH VOD (fMP4)            | Initialization and fragmented MP4 segments                             | [Unified Streaming DASH](https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.mpd) |                                                                                 |
+| DASH on-demand single-file | BaseURL-only single-file representation                                | [Sony test vector](https://dash.akamaized.net/dash264/TestCases/1a/sony/SNE_DASH_SD_CASE1A_REVISED.mpd)                       | Valid MP4, but FFmpeg-based players may reject its `sidx` `reference_type 1`    |
+| DASH live                  | Dynamic MPD, `minimumUpdatePeriod`, `timeShiftBufferDepth`, clock sync | [DASH-IF livesim](https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd)                                                 | Live content; availability varies                                               |
+| DASH live                  | Newer livesim endpoint                                                 | [DASH-IF livesim2](https://livesim2.dashif.org/livesim2/testpic_2s/Manifest.mpd)                                              | Live content; availability varies                                               |
+| DASH live (timeline)       | `SegmentTimeline`, `$Time$`, repeated entries                          | [DASH-IF SegmentTimeline](https://livesim.dashif.org/livesim/segtimeline_1/testpic_2s/Manifest.mpd)                           | Live content; availability varies                                               |
+| DASH live (multi-period)   | Period transitions, live edge, segment deduplication                   | [DASH-IF multi-period](https://livesim.dashif.org/livesim/periods_60/testpic_2s/Manifest.mpd)                                 | Live content; availability varies                                               |
+
+Some HLS masters expose separate audio and video renditions. The library selects one playlist or rendition and exposes alternate renditions through the `media` event; it does not mux multiple renditions.
+
 # API
 
 ### m3u8stream(url, [options])

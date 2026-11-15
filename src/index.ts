@@ -61,6 +61,11 @@ interface TimedItem extends Item {
 const formatByteRange = (range: { start: number; end?: number }): string =>
   `${range.start}-${range.end ?? ''}`;
 
+const itemKey = (
+  url: string,
+  range?: { start: number; end?: number },
+): string => (range ? `${url}@${formatByteRange(range)}` : url);
+
 const supportedParsers = {
   m3u8: m3u8Parser,
   'dash-mpd': DashMPDParser,
@@ -77,13 +82,13 @@ let m3u8stream = ((
   // 20 seconds.
   const liveBuffer = options.liveBuffer || 20000;
   const requestOptions = options.requestOptions;
-  const Parser =
-    supportedParsers[
-      options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8')
-    ];
+  const parserType =
+    options.parser || (/\.mpd$/.test(playlistURL) ? 'dash-mpd' : 'm3u8');
+  const Parser = supportedParsers[parserType];
   if (!Parser) {
     throw TypeError(`parser '${options.parser}' not supported`);
   }
+  const isDash = parserType === 'dash-mpd';
   if (isSet(options.end) && isSet(options.duration)) {
     throw TypeError('Options `end` and `duration` cannot be used together');
   }
@@ -264,6 +269,12 @@ let m3u8stream = ((
   let currPlaylist: miniget.Stream | null;
   let lastSeq: number;
   let lastInit: string;
+  const seenDashItems = new Set<string>();
+  const maxSeenDashItems = 1000;
+  const evictOldestSeen = (): void => {
+    const oldest = seenDashItems.values().next().value;
+    seenDashItems.delete(oldest!);
+  };
   let starttime = 0;
   let targetDuration = 0;
   let lastDuration = 0;
@@ -304,7 +315,6 @@ let m3u8stream = ((
     parser.on('endlist', () => {
       noMoreItems = true;
     });
-    parser.on('endearly', currPlaylist.unpipe.bind(currPlaylist, parser));
     parser.on('targetduration', (ms: number) => {
       targetDuration = ms;
     });
@@ -316,13 +326,20 @@ let m3u8stream = ((
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
       if (item.init) {
-        const initKey = item.range
-          ? `${item.url}@${formatByteRange(item.range)}`
-          : item.url;
+        const initKey = itemKey(item.url, item.range);
         if (initKey === lastInit) {
           return;
         }
         lastInit = initKey;
+      } else if (isDash) {
+        const key = `${itemKey(item.url, item.range)}@${item.seq}`;
+        if (seenDashItems.has(key)) {
+          return;
+        }
+        seenDashItems.add(key);
+        if (seenDashItems.size > maxSeenDashItems) {
+          evictOldestSeen();
+        }
       } else {
         if (item.seq <= lastSeq) {
           return;
@@ -395,8 +412,10 @@ let m3u8stream = ((
       // Reload after the target duration, or half of it if nothing new came
       // in (RFC 8216 6.3.4). DASH has no target duration, so the last
       // segment's stands in.
-      minRefreshTime =
-        (targetDuration || lastDuration) / (addedItems.length ? 1 : 2);
+      minRefreshTime = Math.max(
+        250,
+        (targetDuration || lastDuration) / (addedItems.length ? 1 : 2),
+      );
 
       fetchingPlaylist = false;
       onQueuedEnd(null);

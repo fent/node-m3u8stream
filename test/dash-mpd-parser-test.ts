@@ -1896,4 +1896,95 @@ describe('dash MPD parser', () => {
     });
     parser.end(Buffer.from(xml));
   });
+  it('Prefers a SegmentTemplate over a file BaseURL', (done) => {
+    const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT4S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>video.mp4</BaseURL>
+        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const parser = new DashMPDParser();
+    const items: Item[] = [];
+    parser.on('item', (item: Item) => items.push(item));
+    parser.on('error', done);
+    parser.on('end', () => {
+      assert.deepEqual(
+        items.map((item) => item.url),
+        ['seg-1.m4s', 'seg-2.m4s'],
+      );
+      done();
+    });
+    parser.end(Buffer.from(xml));
+  });
+
+  describe('DASH multi-period', () => {
+    it('Emits target segments from every Period', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p1-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p2-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['p1-1.m4s', 'p1-2.m4s', 'p2-1.m4s', 'p2-2.m4s'],
+        );
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Infers a Period duration from the next Period start', (done) => {
+      const xml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p1-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period start="PT2S" duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p2-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['p1-1.m4s', 'p1-2.m4s', 'p2-1.m4s', 'p2-2.m4s'],
+        );
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+  });
 });

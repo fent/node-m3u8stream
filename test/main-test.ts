@@ -1581,6 +1581,106 @@ describe('m3u8stream', () => {
         done();
       });
     });
+
+    it('Streams segments from every Period', (done) => {
+      const mpdXml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p1-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period start="PT2S" duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="p2-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .reply(200, mpdXml)
+        .get('/p1-1.m4s')
+        .reply(200, '1')
+        .get('/p1-2.m4s')
+        .reply(200, '1')
+        .get('/p2-1.m4s')
+        .reply(200, '2')
+        .get('/p2-2.m4s')
+        .reply(200, '2');
+      const stream = m3u8stream('https://videohost.com/playlist.mpd');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, '1122');
+        done();
+      });
+    });
+
+    it('Deduplicates identical DASH segment URLs across Periods', (done) => {
+      const mpdXml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT1S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="same-1.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period start="PT1S" duration="PT1S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="same-1.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .reply(200, mpdXml)
+        .get('/same-1.m4s')
+        .reply(200, '1');
+      const stream = m3u8stream('https://videohost.com/playlist.mpd');
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, '1');
+        done();
+      });
+    });
+
+    it('Bounds the DASH deduplication cache', (done) => {
+      const mpdXml = `<?xml version="1.0"?>
+<MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period duration="PT1001S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="1000" media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const scope = nock('https://videohost.com')
+        .get('/playlist.mpd')
+        .reply(200, mpdXml)
+        .get(/\/seg-\d+\.m4s$/)
+        .times(1001)
+        .reply(200, 'x');
+      const stream = m3u8stream('https://videohost.com/playlist.mpd');
+      concat(stream, (err, body) => {
+        try {
+          assert.ifError(err);
+          scope.done();
+          assert.equal(body.length, 1001);
+          done();
+        } catch (assertionError) {
+          done(assertionError as Error);
+        }
+      });
+    });
   });
 
   describe('m3u8 playlist with ranges', () => {

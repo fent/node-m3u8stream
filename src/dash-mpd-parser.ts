@@ -7,6 +7,11 @@ type ByteRange = { start: number; end: number };
 type Initialization = { sourceURL?: string; range?: ByteRange };
 type TimelineEntry = { duration?: number; repeat?: number; time?: number };
 
+interface PeriodInfo {
+  start: number;
+  duration: number;
+}
+
 interface SegmentTemplateInfo {
   initialization?: string;
   media?: string;
@@ -130,10 +135,15 @@ export default class DashMPDParser extends Writable implements Parser {
   private _extractVariants(
     xml: string,
     callback: (err?: Error | null) => void,
-  ): { variants: Variant[]; isStatic: boolean } | null {
+  ): {
+    variants: Variant[];
+    isStatic: boolean;
+    periods: PeriodInfo[];
+  } | null {
     const variants: Variant[] = [];
     let currentAdaptation: Record<string, string> = {};
     let isStatic = true;
+    const periods: PeriodInfo[] = [];
 
     const variantParser = sax.parser(false, { lowercase: true });
     variantParser.onerror = (err: Error) => {
@@ -143,6 +153,16 @@ export default class DashMPDParser extends Writable implements Parser {
     variantParser.onopentag = (node) => {
       if (node.name === 'mpd') {
         isStatic = node.attributes.type !== 'dynamic';
+      } else if (node.name === 'period') {
+        const duration = durationStr(
+          (node.attributes.duration as string) || '',
+        );
+        let start = durationStr((node.attributes.start as string) || '');
+        if (!node.attributes.start && periods.length) {
+          const previous = periods[periods.length - 1];
+          start = previous.start + previous.duration;
+        }
+        periods.push({ start, duration });
       } else if (node.name === 'adaptationset') {
         currentAdaptation = node.attributes as Record<string, string>;
       } else if (node.name === 'representation') {
@@ -208,7 +228,7 @@ export default class DashMPDParser extends Writable implements Parser {
       return null;
     }
 
-    return { variants, isStatic };
+    return { variants, isStatic, periods };
   }
 
   private _parseMPD(xml: string, callback: (err?: Error | null) => void): void {
@@ -216,7 +236,7 @@ export default class DashMPDParser extends Writable implements Parser {
     if (!extracted) {
       return;
     }
-    const { variants, isStatic } = extracted;
+    const { variants, isStatic, periods } = extracted;
     let ended = false;
 
     const chosen = selectVariant(variants, this._targetFilter);
@@ -242,7 +262,8 @@ export default class DashMPDParser extends Writable implements Parser {
     let timeShiftBufferDepth = 0;
     let periodStart = 0;
     let periodDuration = 0;
-    let gotSegments = false;
+    let periodDurationExplicit = 0;
+    let periodIndex = -1;
 
     const baseURLs: string[] = [];
     const templates: (SegmentTemplateInfo | undefined)[] = [];
@@ -304,6 +325,9 @@ export default class DashMPDParser extends Writable implements Parser {
       }
       return undefined;
     };
+
+    const hasDirectMedia = (level: number): boolean =>
+      !!baseURLs[level] && !baseURLs[level].endsWith('/');
 
     const getTimeline = (level: number): TimelineEntry[] | undefined => {
       for (let i = level; i >= 1; i--) {
@@ -464,7 +488,6 @@ export default class DashMPDParser extends Writable implements Parser {
             });
             number++;
           }
-          gotSegments = segments.length > 0;
         } else if (template.duration) {
           const segmentDuration = (template.duration / timescale) * 1000;
           const maxCount = periodDuration
@@ -482,7 +505,6 @@ export default class DashMPDParser extends Writable implements Parser {
               duration: segmentDuration,
             });
           }
-          gotSegments = count > 0;
         }
         return;
       }
@@ -506,7 +528,6 @@ export default class DashMPDParser extends Writable implements Parser {
             ...(segmentURL.mediaRange ? { range: segmentURL.mediaRange } : {}),
           });
         });
-        gotSegments = list.segmentURLs.length > 0;
         return;
       }
 
@@ -535,7 +556,6 @@ export default class DashMPDParser extends Writable implements Parser {
               : periodDuration,
             ...(isSet(start) ? { range: { start } } : {}),
           });
-          gotSegments = true;
         }
         return;
       }
@@ -548,7 +568,6 @@ export default class DashMPDParser extends Writable implements Parser {
             seq: 1,
             duration: periodDuration,
           });
-          gotSegments = true;
         }
       }
     };
@@ -583,14 +602,23 @@ export default class DashMPDParser extends Writable implements Parser {
             );
           }
           break;
-        case 'period':
+        case 'period': {
           treeLevel = 1;
           resetLevel(treeLevel);
           baseURLs.length = treeLevel;
-          periodStart = durationStr(node.attributes.start as string) || 0;
+          periodIndex++;
+          const periodInfo = periods[periodIndex]!;
+          periodStart = periodInfo.start;
+          periodDurationExplicit = periodInfo.duration;
+          const nextPeriodStart = periods[periodIndex + 1]?.start;
+          const inferredDuration =
+            periodDurationExplicit ||
+            (nextPeriodStart ?? periodStart) - periodStart;
           periodDuration =
-            durationStr(node.attributes.duration as string) || mpdDuration;
+            inferredDuration ||
+            (mpdDuration ? Math.max(0, mpdDuration - periodStart) : 0);
           break;
+        }
         case 'adaptationset':
           treeLevel++;
           resetLevel(treeLevel);
@@ -716,7 +744,7 @@ export default class DashMPDParser extends Writable implements Parser {
             !base.duration &&
             !initialization;
           const directMedia =
-            !!baseURLs[treeLevel] &&
+            hasDirectMedia(treeLevel) &&
             !template?.media &&
             !list?.segmentURLs.length &&
             !base;
@@ -740,16 +768,9 @@ export default class DashMPDParser extends Writable implements Parser {
                 (presentationTimeOffset / timescale) * 1000,
             );
             emitSegments(treeLevel);
-            if (gotSegments) {
-              this.emit('endearly');
-              onEnd();
-              delete (segmentParser as any).onopentag;
-              delete (segmentParser as any).onclosetag;
-              delete (segmentParser as any).ontext;
-            }
           }
-          isTarget = false;
         }
+        isTarget = false;
         resetLevel(treeLevel);
         baseURLs.length = treeLevel;
         treeLevel--;

@@ -1522,13 +1522,13 @@ describe('dash MPD parser', () => {
       parser.end(Buffer.from(xml));
     });
 
-    it('Emits one segment when a dynamic MPD has no elapsed time', (done) => {
+    it('Emits no segments before the first segment is available', (done) => {
       const clock = sinon.useFakeTimers({
         now: Date.parse('2020-01-01T00:00:00Z'),
       });
       const xml = `<?xml version="1.0"?>
 <MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
-     xmlns="urn:mpeg:dash:schema:mpd:2011">
+     mediaPresentationDuration="PT6S" xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet mimeType="video/mp4">
       <Representation id="1">
@@ -1546,7 +1546,7 @@ describe('dash MPD parser', () => {
       });
       parser.on('end', () => {
         clock.restore();
-        assert.deepEqual(items, [{ url: 'seg-1.m4s', seq: 1, duration: 2000 }]);
+        assert.deepEqual(items, []);
         done();
       });
       parser.end(Buffer.from(xml));
@@ -1711,40 +1711,6 @@ describe('dash MPD parser', () => {
     parser.end(Buffer.from(xml));
   });
 
-  it('Uses the full Period when a dynamic MPD has not started yet', (done) => {
-    const clock = sinon.useFakeTimers({
-      now: Date.parse('2020-01-01T00:00:00Z'),
-    });
-    const xml = `<?xml version="1.0"?>
-<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
-     mediaPresentationDuration="PT6S" xmlns="urn:mpeg:dash:schema:mpd:2011">
-  <Period>
-    <AdaptationSet mimeType="video/mp4">
-      <Representation id="1">
-        <SegmentTemplate timescale="1000" duration="2000" media="seg-$Number$.m4s" />
-      </Representation>
-    </AdaptationSet>
-  </Period>
-</MPD>`;
-    const parser = new DashMPDParser();
-    const items: Item[] = [];
-    parser.on('item', (item) => items.push(item));
-    parser.on('error', (err) => {
-      clock.restore();
-      done(err);
-    });
-    parser.on('end', () => {
-      clock.restore();
-      assert.deepEqual(items, [
-        { url: 'seg-1.m4s', seq: 1, duration: 2000 },
-        { url: 'seg-2.m4s', seq: 2, duration: 2000 },
-        { url: 'seg-3.m4s', seq: 3, duration: 2000 },
-      ]);
-      done();
-    });
-    parser.end(Buffer.from(xml));
-  });
-
   it('Defaults SegmentBase @timescale to 1', (done) => {
     const xml = `<?xml version="1.0"?>
 <MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
@@ -1896,8 +1862,267 @@ describe('dash MPD parser', () => {
     });
     parser.end(Buffer.from(xml));
   });
-  it('Prefers a SegmentTemplate over a file BaseURL', (done) => {
-    const xml = `<?xml version="1.0"?>
+
+  describe('DASH live timing', () => {
+    const baseXml = (attrs: string, extra = '') => `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="2020-01-01T00:00:00Z"
+     timeShiftBufferDepth="PT4S" ${attrs} xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" startNumber="1"
+          media="seg-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  ${extra}
+</MPD>`;
+
+    const parse = (
+      xml: string,
+      clock: { restore: () => void },
+      done: (err: Error | null, items: Item[]) => void,
+    ) => {
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item: Item) => items.push(item));
+      parser.on('error', (err: Error) => {
+        clock.restore();
+        done(err, []);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        done(null, items);
+      });
+      parser.end(Buffer.from(xml));
+    };
+
+    it('Uses direct UTCTiming to correct the clock', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml(
+        '',
+        '<UTCTiming schemeIdUri="urn:mpeg:dash:utc:direct:2014" value="2020-01-01T00:00:20Z" />',
+      );
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-9.m4s', 'seg-10.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Falls back to publishTime when UTCTiming is absent', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('publishTime="2020-01-01T00:02:10Z"');
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-64.m4s', 'seg-65.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores a small publishTime skew', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('publishTime="2020-01-01T00:00:20Z"');
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Applies suggestedPresentationDelay to the live edge', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('suggestedPresentationDelay="PT3S"');
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-2.m4s', 'seg-3.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Adds availabilityTimeOffset to segment availability', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('').replace(
+        'media="seg-$Number$.m4s"',
+        'media="seg-$Number$.m4s" availabilityTimeOffset="2"',
+      );
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-5.m4s', 'seg-6.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Includes the in-progress segment when availabilityTimeComplete is false', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('').replace(
+        'media="seg-$Number$.m4s"',
+        'media="seg-$Number$.m4s" availabilityTimeComplete="false"',
+      );
+      parse(xml, clock, (err: Error | null, items: Item[]) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s', 'seg-6.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Uses maxSegmentDuration as a refresh fallback', (done) => {
+      const xml = baseXml('maxSegmentDuration="PT3S"');
+      const parser = new DashMPDParser();
+      let targetDuration = 0;
+      parser.on('targetduration', (ms) => (targetDuration = ms));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(targetDuration, 3000);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Uses minBufferTime as a refresh fallback', (done) => {
+      const xml = baseXml('minBufferTime="PT2S"');
+      const parser = new DashMPDParser();
+      let targetDuration = 0;
+      parser.on('targetduration', (ms) => (targetDuration = ms));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.equal(targetDuration, 2000);
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Treats availabilityTimeComplete=true as a complete segment', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('').replace(
+        'media="seg-$Number$.m4s"',
+        'media="seg-$Number$.m4s" availabilityTimeComplete="true"',
+      );
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores an invalid publishTime', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('publishTime="not-a-date"');
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores UTCTiming entries without a recognized scheme', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('', '<UTCTiming value="2020-01-01T00:00:20Z" />');
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores UTCTiming entries without a value', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml(
+        '',
+        '<UTCTiming schemeIdUri="urn:mpeg:dash:utc:direct:2014" />',
+      );
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores an implausible publishTime', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('publishTime="1970-01-01T00:00:00Z"');
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Ignores an invalid availabilityTimeOffset', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('2020-01-01T00:00:10Z'),
+      });
+      const xml = baseXml('').replace(
+        'media="seg-$Number$.m4s"',
+        'media="seg-$Number$.m4s" availabilityTimeOffset="abc"',
+      );
+      parse(xml, clock, (err, items) => {
+        assert.ifError(err);
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-4.m4s', 'seg-5.m4s'],
+        );
+        done();
+      });
+    });
+
+    it('Prefers a SegmentTemplate over a file BaseURL', (done) => {
+      const xml = `<?xml version="1.0"?>
 <MPD type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period duration="PT4S">
     <AdaptationSet mimeType="video/mp4">
@@ -1908,18 +2133,19 @@ describe('dash MPD parser', () => {
     </AdaptationSet>
   </Period>
 </MPD>`;
-    const parser = new DashMPDParser();
-    const items: Item[] = [];
-    parser.on('item', (item: Item) => items.push(item));
-    parser.on('error', done);
-    parser.on('end', () => {
-      assert.deepEqual(
-        items.map((item) => item.url),
-        ['seg-1.m4s', 'seg-2.m4s'],
-      );
-      done();
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item: Item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['seg-1.m4s', 'seg-2.m4s'],
+        );
+        done();
+      });
+      parser.end(Buffer.from(xml));
     });
-    parser.end(Buffer.from(xml));
   });
 
   describe('DASH multi-period', () => {
@@ -1949,6 +2175,53 @@ describe('dash MPD parser', () => {
         assert.deepEqual(
           items.map((item) => item.url),
           ['p1-1.m4s', 'p1-2.m4s', 'p2-1.m4s', 'p2-2.m4s'],
+        );
+        done();
+      });
+      parser.end(Buffer.from(xml));
+    });
+
+    it('Skips expired and future Periods on live streams', (done) => {
+      const clock = sinon.useFakeTimers({
+        now: Date.parse('1970-01-01T00:00:10Z'),
+      });
+      const xml = `<?xml version="1.0"?>
+<MPD type="dynamic" availabilityStartTime="1970-01-01T00:00:00Z"
+     timeShiftBufferDepth="PT4S" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period start="PT0S" duration="PT2S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="p1-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period start="PT8S" duration="PT4S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="p2-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+  <Period start="PT20S" duration="PT4S">
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <SegmentTemplate timescale="1000" duration="2000" media="p3-$Number$.m4s" />
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const parser = new DashMPDParser();
+      const items: Item[] = [];
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', (err) => {
+        clock.restore();
+        done(err);
+      });
+      parser.on('end', () => {
+        clock.restore();
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['p2-1.m4s'],
         );
         done();
       });

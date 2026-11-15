@@ -7,11 +7,6 @@ type ByteRange = { start: number; end: number };
 type Initialization = { sourceURL?: string; range?: ByteRange };
 type TimelineEntry = { duration?: number; repeat?: number; time?: number };
 
-interface PeriodInfo {
-  start: number;
-  duration: number;
-}
-
 interface SegmentTemplateInfo {
   initialization?: string;
   media?: string;
@@ -19,6 +14,8 @@ interface SegmentTemplateInfo {
   startNumber?: number;
   duration?: number;
   presentationTimeOffset?: number;
+  availabilityTimeOffset?: number;
+  availabilityTimeComplete?: boolean;
 }
 
 interface SegmentListInfo {
@@ -26,6 +23,8 @@ interface SegmentListInfo {
   duration?: number;
   startNumber?: number;
   presentationTimeOffset?: number;
+  availabilityTimeOffset?: number;
+  availabilityTimeComplete?: boolean;
   initialization?: Initialization;
   segmentURLs: { media?: string; mediaRange?: ByteRange }[];
 }
@@ -34,9 +33,21 @@ interface SegmentBaseInfo {
   timescale?: number;
   duration?: number;
   presentationTimeOffset?: number;
+  availabilityTimeOffset?: number;
+  availabilityTimeComplete?: boolean;
   indexRange?: ByteRange;
   initialization?: Initialization;
   representationIndex?: Initialization;
+}
+
+interface UtcTiming {
+  schemeIdUri: string;
+  value: string;
+}
+
+interface PeriodInfo {
+  start: number;
+  duration: number;
 }
 
 const isAbsolute = (url: string): boolean =>
@@ -96,6 +107,37 @@ const parseOptionalInt = (value?: string): number | undefined => {
   return isNaN(parsed) ? undefined : parsed;
 };
 
+const parseOptionalFloat = (value?: string): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? undefined : parsed;
+};
+
+const TRUE_VALUES = new Set(['true', '1']);
+const FALSE_VALUES = new Set(['false', '0']);
+
+const parseOptionalBoolean = (value?: string): boolean | undefined => {
+  const normalized = value?.toLowerCase() ?? '';
+  if (TRUE_VALUES.has(normalized)) {
+    return true;
+  }
+  if (FALSE_VALUES.has(normalized)) {
+    return false;
+  }
+  return undefined;
+};
+
+const parseSegmentAvailability = (attributes: Record<string, unknown>) => ({
+  availabilityTimeOffset: parseOptionalFloat(
+    attributes.availabilitytimeoffset as string | undefined,
+  ),
+  availabilityTimeComplete: parseOptionalBoolean(
+    attributes.availabilitytimecomplete as string | undefined,
+  ),
+});
+
 const mergeDefined = <T extends object>(
   base: T | undefined,
   next: Partial<T>,
@@ -138,11 +180,15 @@ export default class DashMPDParser extends Writable implements Parser {
   ): {
     variants: Variant[];
     isStatic: boolean;
+    publishTime?: number;
+    utcTimings: UtcTiming[];
     periods: PeriodInfo[];
   } | null {
     const variants: Variant[] = [];
     let currentAdaptation: Record<string, string> = {};
     let isStatic = true;
+    let publishTime: number | undefined;
+    const utcTimings: UtcTiming[] = [];
     const periods: PeriodInfo[] = [];
 
     const variantParser = sax.parser(false, { lowercase: true });
@@ -153,6 +199,15 @@ export default class DashMPDParser extends Writable implements Parser {
     variantParser.onopentag = (node) => {
       if (node.name === 'mpd') {
         isStatic = node.attributes.type !== 'dynamic';
+        if (node.attributes.publishtime) {
+          const parsed = Date.parse(node.attributes.publishtime as string);
+          publishTime = isNaN(parsed) ? undefined : parsed;
+        }
+      } else if (node.name === 'utctiming') {
+        utcTimings.push({
+          schemeIdUri: (node.attributes.schemeiduri as string) || '',
+          value: (node.attributes.value as string) || '',
+        });
       } else if (node.name === 'period') {
         const duration = durationStr(
           (node.attributes.duration as string) || '',
@@ -228,7 +283,7 @@ export default class DashMPDParser extends Writable implements Parser {
       return null;
     }
 
-    return { variants, isStatic, periods };
+    return { variants, isStatic, publishTime, utcTimings, periods };
   }
 
   private _parseMPD(xml: string, callback: (err?: Error | null) => void): void {
@@ -236,8 +291,26 @@ export default class DashMPDParser extends Writable implements Parser {
     if (!extracted) {
       return;
     }
-    const { variants, isStatic, periods } = extracted;
+    const { variants, isStatic, publishTime, utcTimings, periods } = extracted;
     let ended = false;
+
+    const directTiming = utcTimings.find((timing) =>
+      /^urn:mpeg:dash:utc:direct:/.test(timing.schemeIdUri),
+    );
+    let clockOffset = 0;
+    if (directTiming) {
+      const serverTime = Date.parse(directTiming.value);
+      if (!isNaN(serverTime)) {
+        clockOffset = serverTime - Date.now();
+      }
+    } else if (publishTime) {
+      const nowMs = Date.now();
+      const skew = Math.abs(publishTime - nowMs);
+      if (skew > 60000 && skew <= 86400000) {
+        clockOffset = publishTime - nowMs;
+      }
+    }
+    const now = (): number => Date.now() + clockOffset;
 
     const chosen = selectVariant(variants, this._targetFilter);
     if (!chosen) {
@@ -260,10 +333,14 @@ export default class DashMPDParser extends Writable implements Parser {
     let availabilityStartTime: number | undefined;
     let mpdDuration = 0;
     let timeShiftBufferDepth = 0;
+    let suggestedPresentationDelay = 0;
+    let maxSegmentDuration = 0;
+    let minBufferTime = 0;
     let periodStart = 0;
     let periodDuration = 0;
     let periodDurationExplicit = 0;
     let periodIndex = -1;
+    let skipPeriod = false;
 
     const baseURLs: string[] = [];
     const templates: (SegmentTemplateInfo | undefined)[] = [];
@@ -408,23 +485,33 @@ export default class DashMPDParser extends Writable implements Parser {
     const getDurationTemplateRange = (
       segmentDuration: number,
       maxCount: number,
+      template: SegmentTemplateInfo,
     ): { first: number; count: number } => {
       if (isStatic) {
         return { first: 0, count: maxCount };
       }
-      const elapsed =
-        typeof availabilityStartTime === 'number'
-          ? Date.now() - availabilityStartTime - periodStart
-          : 0;
-      if (elapsed <= 0) {
-        return { first: 0, count: Math.max(maxCount, 1) };
+      if (availabilityStartTime === undefined) {
+        return { first: 0, count: maxCount || 1 };
       }
+      const elapsed =
+        now() -
+        suggestedPresentationDelay -
+        availabilityStartTime -
+        periodStart;
+      if (elapsed <= 0) {
+        return { first: 0, count: 0 };
+      }
+      const availabilityOffset = (template.availabilityTimeOffset ?? 0) * 1000;
+      const availableElapsed = elapsed + availabilityOffset;
       const window = timeShiftBufferDepth || elapsed;
       const first = Math.max(
         0,
-        Math.floor(Math.max(0, elapsed - window) / segmentDuration),
+        Math.floor(Math.max(0, availableElapsed - window) / segmentDuration),
       );
-      const last = Math.floor(elapsed / segmentDuration) - 1;
+      const last =
+        template.availabilityTimeComplete === false
+          ? Math.floor(availableElapsed / segmentDuration)
+          : Math.floor(availableElapsed / segmentDuration) - 1;
       let count = Math.max(0, last - first + 1);
       if (maxCount) {
         count = Math.min(count, Math.max(0, maxCount - first));
@@ -496,6 +583,7 @@ export default class DashMPDParser extends Writable implements Parser {
           const { first, count } = getDurationTemplateRange(
             segmentDuration,
             maxCount,
+            template,
           );
           let seq = startNumber + first;
           for (let n = 0; n < count; n++) {
@@ -560,7 +648,7 @@ export default class DashMPDParser extends Writable implements Parser {
         return;
       }
 
-      if (baseURLs[level]) {
+      if (hasDirectMedia(level)) {
         const url = mediaURL('');
         if (url) {
           this.emit('item', {
@@ -583,7 +671,7 @@ export default class DashMPDParser extends Writable implements Parser {
     const segmentParser = sax.parser(false, { lowercase: true });
     segmentParser.onopentag = (node) => {
       switch (node.name) {
-        case 'mpd':
+        case 'mpd': {
           availabilityStartTime = node.attributes.availabilitystarttime
             ? new Date(
                 node.attributes.availabilitystarttime as string,
@@ -595,13 +683,24 @@ export default class DashMPDParser extends Writable implements Parser {
           timeShiftBufferDepth = durationStr(
             node.attributes.timeshiftbufferdepth as string,
           );
-          if (node.attributes.minimumupdateperiod) {
-            this.emit(
-              'targetduration',
-              durationStr(node.attributes.minimumupdateperiod as string),
-            );
+          suggestedPresentationDelay = durationStr(
+            node.attributes.suggestedpresentationdelay as string,
+          );
+          maxSegmentDuration = durationStr(
+            node.attributes.maxsegmentduration as string,
+          );
+          minBufferTime = durationStr(node.attributes.minbuffertime as string);
+          const minimumUpdatePeriod = durationStr(
+            node.attributes.minimumupdateperiod as string,
+          );
+          const refresh =
+            minimumUpdatePeriod ||
+            (!isStatic ? maxSegmentDuration || minBufferTime : 0);
+          if (refresh) {
+            this.emit('targetduration', refresh);
           }
           break;
+        }
         case 'period': {
           treeLevel = 1;
           resetLevel(treeLevel);
@@ -617,6 +716,21 @@ export default class DashMPDParser extends Writable implements Parser {
           periodDuration =
             inferredDuration ||
             (mpdDuration ? Math.max(0, mpdDuration - periodStart) : 0);
+          skipPeriod = false;
+          if (!isStatic && typeof availabilityStartTime === 'number') {
+            const presentationTime = now() - availabilityStartTime;
+            const periodEnd = periodDurationExplicit
+              ? periodStart + periodDurationExplicit
+              : nextPeriodStart;
+            if (periodStart > presentationTime) {
+              skipPeriod = true;
+            } else if (
+              isSet(periodEnd) &&
+              periodEnd <= presentationTime - timeShiftBufferDepth
+            ) {
+              skipPeriod = true;
+            }
+          }
           break;
         }
         case 'adaptationset':
@@ -650,6 +764,7 @@ export default class DashMPDParser extends Writable implements Parser {
             presentationTimeOffset: parseOptionalInt(
               node.attributes.presentationtimeoffset as string | undefined,
             ),
+            ...parseSegmentAvailability(node.attributes),
           };
           break;
         case 'segmentlist':
@@ -666,6 +781,7 @@ export default class DashMPDParser extends Writable implements Parser {
             presentationTimeOffset: parseOptionalInt(
               node.attributes.presentationtimeoffset as string | undefined,
             ),
+            ...parseSegmentAvailability(node.attributes),
             segmentURLs: [],
           };
           break;
@@ -683,6 +799,7 @@ export default class DashMPDParser extends Writable implements Parser {
             presentationTimeOffset: parseOptionalInt(
               node.attributes.presentationtimeoffset as string | undefined,
             ),
+            ...parseSegmentAvailability(node.attributes),
             ...(indexRange ? { indexRange } : {}),
           };
           break;
@@ -733,7 +850,7 @@ export default class DashMPDParser extends Writable implements Parser {
 
     segmentParser.onclosetag = (tagName) => {
       if (tagName === 'representation') {
-        if (isTarget) {
+        if (isTarget && !skipPeriod) {
           const template = getTemplate(treeLevel);
           const list = getList(treeLevel);
           const base = getBase(treeLevel);

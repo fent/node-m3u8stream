@@ -51,6 +51,8 @@ namespace m3u8stream {
   export interface m3u8streamFunc {
     (playlistURL: string, options?: m3u8stream.Options): Stream;
     parseTimestamp(time: number | string): number;
+    m3u8stream: m3u8streamFunc;
+    default: m3u8streamFunc;
   }
 }
 
@@ -453,4 +455,12 @@ let m3u8stream = ((
   return stream;
 }) as m3u8stream.m3u8streamFunc;
 m3u8stream.parseTimestamp = humanStr;
+m3u8stream.m3u8stream = m3u8stream;
+m3u8stream.default = m3u8stream;
+
+// Statically recognizable exports for Node.js cjs-module-lexer (ESM named import support)
+module.exports.default = m3u8stream;
+module.exports.m3u8stream = m3u8stream;
+module.exports.parseTimestamp = m3u8stream.parseTimestamp;
+
 export = m3u8stream;

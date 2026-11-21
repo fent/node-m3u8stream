@@ -1767,6 +1767,36 @@ describe('m3u8stream', () => {
       });
     });
 
+    it('Forwards miniget events from key requests', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php",IV=0xbf9840dc7d7fa163301a6c38844d6239',
+        '#EXTINF:5,',
+        'seg1.ts',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key)
+        .get('/seg1.ts')
+        .reply(200, encrypt('one', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      let requests = 0;
+      stream.on('request', () => requests++);
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'one');
+        assert.equal(requests, 3);
+        done();
+      });
+    });
+
     it('Decrypts segments using sequence number IV when IV attribute is omitted', (done) => {
       const playlist = [
         '#EXTM3U',
@@ -2266,6 +2296,42 @@ describe('m3u8stream', () => {
         assert.equal(body, '');
         scope.done();
         done();
+      });
+    });
+
+    it('Destroys request when stream ends as decipher resolves', (done) => {
+      const playlist = [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:5',
+        '#EXT-X-KEY:METHOD=AES-128,URI="./sig.php"',
+        '#EXTINF:5,',
+        'main1.mp4',
+        '#EXT-X-ENDLIST',
+      ].join('\n');
+
+      let scope = nock('https://media.example.com')
+        .get('/playlist.m3u8')
+        .reply(200, playlist)
+        .get('/sig.php')
+        .reply(200, key)
+        .get('/main1.mp4')
+        .reply(200, encrypt('one', key, iv));
+
+      let stream = m3u8stream('https://media.example.com/playlist.m3u8');
+      stream.on('response', (res: any) => {
+        if (res.req.path === '/sig.php') {
+          res.on('end', () => {
+            Promise.resolve().then(() => stream.end());
+          });
+        }
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        assert.equal(body, '');
+        setImmediate(() => {
+          scope.done();
+          done();
+        });
       });
     });
   });

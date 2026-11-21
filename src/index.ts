@@ -158,7 +158,7 @@ let m3u8stream = ((
     { concurrency: 1 },
   );
 
-  const keyManager = new KeyManager(requestOptions);
+  const keyManager = new KeyManager(requestOptions, forwardEvents);
 
   let segmentNumber = 0;
   let downloaded = 0;

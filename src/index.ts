@@ -7,7 +7,9 @@ import { humanStr } from './parse-time';
 import KeyManager from './key-manager';
 import {
   Item,
+  Media as ParserMedia,
   isSet,
+  selectMedia,
   selectVariant,
   Variant as ParserVariant,
   VariantFilter as ParserVariantFilter,
@@ -28,6 +30,7 @@ namespace m3u8stream {
 
   export type Variant = ParserVariant;
   export type VariantFilter = ParserVariantFilter;
+  export type Media = ParserMedia;
 
   export interface Progress {
     num: number;
@@ -45,6 +48,7 @@ namespace m3u8stream {
         downloadedBytes: number,
       ) => void,
     ): this;
+    on(event: 'media', listener: (media: Media) => void): this;
     on(event: string | symbol, listener: (...args: any) => void): this;
   }
 
@@ -324,6 +328,11 @@ let m3u8stream = ((
     parser.on('variant', (variant: m3u8stream.Variant) => {
       variants.push(variant);
     });
+    const mediaOptions: m3u8stream.Media[] = [];
+    parser.on('media', (media: m3u8stream.Media) => {
+      mediaOptions.push(media);
+      stream.emit('media', media);
+    });
 
     let addedItems: any[] = [];
     const addItem = (item: TimedItem): void => {
@@ -388,6 +397,14 @@ let m3u8stream = ((
 
     parser.on('end', () => {
       currPlaylist = null;
+      // Follow an explicitly selected alternate rendition from a master playlist.
+      const selectedMedia = selectMedia(mediaOptions, options.id);
+      if (selectedMedia?.uri) {
+        playlistURL = new URL(selectedMedia.uri, playlistURL).toString();
+        refreshPlaylist();
+        return;
+      }
+
       // This is a master playlist, follow the chosen variant stream.
       if (variants.length) {
         const variant = selectVariant(variants, options.id);

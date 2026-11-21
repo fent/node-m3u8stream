@@ -407,6 +407,19 @@ describe('m3u8stream', () => {
       });
     });
 
+    it('Follows an EXT-X-MEDIA rendition selected by name', (done) => {
+      let scope = variantScope('/audio/audio.m3u8');
+      let stream = m3u8stream('http://media.example.com/master.m3u8', {
+        id: 'English',
+      });
+      concat(stream, (err, body) => {
+        assert.ifError(err);
+        scope.done();
+        assert.equal(body, 'onetwothree');
+        done();
+      });
+    });
+
     describe('With `id` matching a variant name', () => {
       it('Follows that variant stream', (done) => {
         let scope = variantScope('/hi/hi.m3u8');

@@ -57,10 +57,11 @@ Creates a readable stream of binary media data. `options` can have the following
 - `highWaterMark` - How much of the download to buffer into the stream. See [node's docs](https://nodejs.org/api/stream.html#stream_constructor_new_stream_writable_options) for more. Note that the actual amount buffered can be higher since each chunk request maintains its own buffer.
 - `requestOptions` - Any options you want to pass to [miniget](https://github.com/fent/node-miniget), such as `headers`.
 - `parser` - Either "m3u8" or "dash-mpd". Defaults to guessing based on the playlist url ending in `.m3u8` or `.mpd`.
-- `id` - For playlists containing multiple media options (HLS master playlists and DASH MPD manifests). If not given, the first stream will be picked. Can be:
+- `id` - For playlists containing multiple media options (HLS master playlists and DASH MPD manifests). If not given, the first video stream is picked when available, otherwise the first stream. Can be:
   - Quality keywords: `'highest'` / `'best'` or `'lowest'` / `'worst'` (bandwidth-based).
   - Resolution shorthand: e.g. `'1080p'`, `'720p'`, `'1920x1080'`.
-  - Specific identifier: DASH representation `id`, HLS variant `NAME`, URL or filename, or 0-based index.
+  - Specific identifier: DASH representation `id`, playlist URL or filename, or 0-based index.
+  - An HLS alternate rendition from `EXT-X-MEDIA`, by `NAME`, `GROUP-ID`, URI, or language.
   - A predicate function: `(variant: Variant) => boolean`.
 
 ### Stream#end()
@@ -78,6 +79,22 @@ If called, stops requesting segments, and refreshing the playlist.
 - `number` - Bytes downloaded up to this point.
 
 For static non-live playlists, emitted each time a segment has finished downloading. Since total download size is unknown until all segment endpoints are hit, progress is calculated based on how many segments are available.
+
+#### Event: media
+
+Emitted for each alternate rendition declared by an HLS master playlist.
+
+- `Object` - Rendition details:
+  - `string` - type
+  - `string` - groupId
+  - `string` - name
+  - `string` - [uri]
+  - `string` - [language]
+  - `boolean` - [default]
+  - `boolean` - [autoselect]
+  - `boolean` - [forced]
+  - `string` - [channels]
+  - `string` - [characteristics]
 
 #### miniget events
 

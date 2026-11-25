@@ -1199,4 +1199,50 @@ describe('m3u8 parser', () => {
       parser.end();
     });
   });
+
+  describe('Malformed attribute lists', () => {
+    it('Parses long malformed attribute lists in linear time', (done) => {
+      const parser = new m3u8Parser();
+      const start = Date.now();
+      parser.on('error', (err) => {
+        const elapsed = Date.now() - start;
+        assert.ok(elapsed < 500, `expected < 500ms, took ${elapsed}ms`);
+        assert.match(
+          err.message,
+          /`EXT-X-MAP` found without required attribute `URI`/,
+        );
+        done();
+      });
+      parser.write(
+        ['#EXTM3U', `#EXT-X-MAP:${'A'.repeat(64000)}`, '#EXT-X-ENDLIST'].join(
+          '\n',
+        ),
+      );
+      parser.end();
+    });
+
+    it('Skips invalid tokens and ignores unterminated quoted values', (done) => {
+      const items: Item[] = [];
+      const parser = new m3u8Parser();
+      parser.on('item', (item) => items.push(item));
+      parser.on('error', done);
+      parser.on('end', () => {
+        assert.deepEqual(
+          items.map((item) => item.url),
+          ['init.mp4', 'seg1.ts'],
+        );
+        done();
+      });
+      parser.write(
+        [
+          '#EXTM3U',
+          '#EXT-X-MAP:INVALID, bad=1, URI="init.mp4", BYTERANGE="unterminated',
+          '#EXTINF:4,',
+          'seg1.ts',
+          '#EXT-X-ENDLIST',
+        ].join('\n'),
+      );
+      parser.end();
+    });
+  });
 });

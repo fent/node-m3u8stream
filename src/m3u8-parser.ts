@@ -45,11 +45,38 @@ export default class m3u8Parser extends Writable implements Parser {
   private _parseAttrList(value: string) {
     let attrs: { [key: string]: string } = {};
     let quoted: { [key: string]: boolean } = {};
-    let regex = /([A-Z0-9-]+)=(?:"([^"]*)"|([^,]*))/g;
-    let match;
-    while ((match = regex.exec(value)) !== null) {
-      attrs[match[1]] = match[2] ?? match[3];
-      quoted[match[1]] = typeof match[2] === 'string';
+    let i = 0;
+    const len = value.length;
+    while (i < len) {
+      while (i < len && (value[i] === ',' || value[i] === ' ')) {
+        i++;
+      }
+      const keyStart = i;
+      while (i < len && /[A-Z0-9-]/.test(value[i])) {
+        i++;
+      }
+      if (i === keyStart || value[i] !== '=') {
+        const nextComma = value.indexOf(',', i);
+        if (nextComma === -1) break;
+        i = nextComma + 1;
+        continue;
+      }
+      const key = value.slice(keyStart, i);
+      i++;
+      if (value[i] === '"') {
+        i++;
+        const valEnd = value.indexOf('"', i);
+        if (valEnd === -1) break;
+        attrs[key] = value.slice(i, valEnd);
+        quoted[key] = true;
+        i = valEnd + 1;
+      } else {
+        const comma = value.indexOf(',', i);
+        const valEnd = comma === -1 ? len : comma;
+        attrs[key] = value.slice(i, valEnd);
+        quoted[key] = false;
+        i = valEnd + 1;
+      }
     }
     return { attrs, quoted };
   }

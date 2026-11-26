@@ -32,10 +32,12 @@ export const humanStr = (time: number | string): number => {
     );
   } else {
     let total = 0;
-    const r = /(-?\d+)(ms|s|m|h)/g;
+    const r = /(-?\d+)(ms|s|m|h)?/g;
     let rs;
     while ((rs = r.exec(time)) !== null) {
-      total += +rs[1] * timeUnits[rs[2]];
+      if (rs[2]) {
+        total += +rs[1] * timeUnits[rs[2]];
+      }
     }
     return total;
   }
@@ -49,10 +51,12 @@ export const humanStr = (time: number | string): number => {
  */
 export const durationStr = (time: string): number => {
   let total = 0;
-  const r = /(\d+(?:\.\d+)?)(S|M|H)/g;
+  const r = /(\d+(?:\.\d+)?)(S|M|H)?/g;
   let rs: RegExpExecArray | null;
   while ((rs = r.exec(time)) !== null) {
-    total += +rs[1] * timeUnits[rs[2].toLowerCase()];
+    if (rs[2]) {
+      total += +rs[1] * timeUnits[rs[2].toLowerCase()];
+    }
   }
   return total;
 };

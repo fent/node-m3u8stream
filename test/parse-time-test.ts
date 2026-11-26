@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { humanStr } from '../dist/parse-time';
+import { durationStr, humanStr } from '../dist/parse-time';
 
 describe('parse-time', () => {
   it('Time format 00:00:00.000', () => {
@@ -19,5 +19,13 @@ describe('parse-time', () => {
   it('No format', () => {
     assert.equal(humanStr('1000'), 1000);
     assert.equal(humanStr(200), 200);
+  });
+
+  it('Parses long malformed time strings in linear time', () => {
+    const start = Date.now();
+    assert.equal(humanStr(`-${'1'.repeat(64000)}`), 0);
+    assert.equal(durationStr(`PT${'1'.repeat(64000)}`), 0);
+    const elapsed = Date.now() - start;
+    assert.ok(elapsed < 500, `expected < 500ms, took ${elapsed}ms`);
   });
 });
